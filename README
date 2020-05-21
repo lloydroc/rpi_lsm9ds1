@@ -1,0 +1,6 @@
+wget http://lloydrochester.com/code/rpi_lsm9ds1-1.0.tar.gz
+tar zxf rpi_lsm9ds1-1.0.tar.gz
+cd rpi_lsm9ds1
+./configure
+make
+./src/rpi_lsm9ds1
