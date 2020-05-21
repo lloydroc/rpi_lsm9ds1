@@ -32,10 +32,10 @@ lsm9ds1_deinit(struct LSM9DS1* lsm9ds1)
 }
 
 int
-lsm9ds1_ag_data(struct LSM9DS1* lsm9ds1, char tx[] , int txlen, char rx[], int rxlen)
+lsm9ds1_ag_data(struct LSM9DS1* lsm9ds1, char tx[], char rx[], int len)
 {
   int ret;
-  ret = spi_transfer(&lsm9ds1->spi_ag, tx, rx, txlen);
+  ret = spi_transfer(&lsm9ds1->spi_ag, tx, rx, len);
   if(ret)
     err_output("lsm9ds1_ag_data");
   return ret;

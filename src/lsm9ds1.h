@@ -1,6 +1,7 @@
 #ifndef LSM9DS1_H
 #define LSM9DS1_H
 
+#include "lsm9ds1_regs.h"
 #include "spi.h"
 #include "gpio.h"
 
@@ -28,8 +29,6 @@ int
 lsm9ds1_deinit(struct LSM9DS1* lsm9ds1);
 
 int
-lsm9ds1_ag_data(struct LSM9DS1* lsm9ds1, char tx[] , int txlen, char rx[], int rxlen);
-
-#define WHO_AM_I 0x0F
+lsm9ds1_ag_data(struct LSM9DS1* lsm9ds1, char tx[], char rx[], int len);
 
 #endif
