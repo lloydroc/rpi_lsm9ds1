@@ -1,7 +1,7 @@
 #include "spi.h"
 
 int
-spi_init(struct SPI* spi, char device[], int speed_hz, char mode, char bits_per_word, char chip_select)
+spi_init(struct SPI* spi, char device[], int speed_hz, uint8_t mode, uint8_t bits_per_word, uint8_t chip_select)
 {
   spi->speed_hz = speed_hz;
   spi->mode = mode;
@@ -64,7 +64,7 @@ spi_open(const char spidev[], int mode, int speed_hz, int oflag)
 }
 
 int
-spi_transfer(struct SPI* spi, char send[], char rec[], int len)
+spi_transfer(struct SPI* spi, uint8_t send[], uint8_t rec[], int len)
 {
     spi->transfer.tx_buf = (unsigned long) send;
     spi->transfer.rx_buf = (unsigned long) rec;
@@ -73,8 +73,11 @@ spi_transfer(struct SPI* spi, char send[], char rec[], int len)
     // send the SPI message (all of the above fields, inc. buffers)
     // 1 is the number of spi_ioc_transfer structs to send
     int status = ioctl(spi->fd, SPI_IOC_MESSAGE(1), &spi->transfer);
+    /*
+     * cannot find documentation on the return code and < 0 can be success
     if (status < 0) {
         err_output("SPI: SPI_IOC_MESSAGE Failed");
     }
+    */
     return status;
 }

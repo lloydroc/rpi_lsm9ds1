@@ -19,16 +19,16 @@
 
 struct SPI {
   char* device;
-  int speed_hz;
-  char mode;
-  char bits_per_word;
-  char chip_select;
+  unsigned int speed_hz;
+  uint8_t mode;
+  uint8_t bits_per_word;
+  uint8_t chip_select;
   int fd;
   struct spi_ioc_transfer transfer;
 };
 
 int
-spi_init(struct SPI* spi, char device[], int speed_hz, char mode, char bits_per_word, char chip_select);
+spi_init(struct SPI* spi, char device[], int speed_hz, uint8_t mode, uint8_t bits_per_word, uint8_t chip_select);
 
 int
 spi_destroy(struct SPI* spi);
@@ -45,6 +45,6 @@ int
 spi_open(const char dev[], int mode, int speed_hz, int oflag);
 
 int
-spi_transfer(struct SPI* spi, char send[], char rec[], int len);
+spi_transfer(struct SPI* spi, uint8_t send[], uint8_t rec[], int len);
 
 #endif
