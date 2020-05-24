@@ -2,12 +2,20 @@
 #define LSM9DS1_H
 
 #include <stdint.h>
+#include <time.h>
 #include "lsm9ds1_regs.h"
 #include "spi.h"
 #include "gpio.h"
 
 extern uint8_t LSM9DS1_INIT0[][2];
 extern size_t LSM9DS1_INIT0_SIZE;
+
+struct point
+{
+  uint8_t x;
+  uint8_t y;
+  uint8_t z;
+};
 
 struct LSM9DS1
 {
@@ -24,6 +32,11 @@ struct LSM9DS1
 
   int fd_int1_ag_pin;
   int fd_int2_ag_pin;
+
+  struct point g;
+  struct point xl;
+  struct point bias_g;
+  struct point bias_xl;
 };
 
 int
@@ -33,6 +46,9 @@ int
 lsm9ds1_deinit(struct LSM9DS1* lsm9ds1);
 
 int
+lsm9ds1_test(struct LSM9DS1* lsm9ds1);
+
+int
 lsm9ds1_configure(struct LSM9DS1* lsm9ds1);
 
 int
@@ -40,6 +56,27 @@ lsm9ds1_ag_read(struct LSM9DS1* lsm9ds1, uint8_t reg, uint8_t *data);
 
 int
 lsm9ds1_ag_read2(struct LSM9DS1* lsm9ds1, uint8_t reg, uint16_t *data);
+
+int
+lsm9ds1_ag_read_status(struct LSM9DS1* lsm9ds1, uint8_t *status);
+
+int
+lsm9ds1_ag_read_xyz(struct LSM9DS1* lsm9ds1, uint8_t reg, struct point *xyz);
+
+int
+lsm9ds1_ag_read_xl_bias(struct LSM9DS1* lsm9ds1);
+
+int
+lsm9ds1_ag_read_g_bias(struct LSM9DS1* lsm9ds1);
+
+int
+lsm9ds1_ag_read_xl(struct LSM9DS1* lsm9ds1);
+
+int
+lsm9ds1_ag_read_g(struct LSM9DS1* lsm9ds1);
+
+int
+lsm9ds1_ag_write_int_g_thresh(struct LSM9DS1* lsm9ds1, struct point *xyz, int dcrm, int wait, uint8_t dur);
 
 int
 lsm9ds1_ag_write(struct LSM9DS1* lsm9ds1, uint8_t reg, uint8_t data);

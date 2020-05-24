@@ -2,29 +2,85 @@
 #include <stdio.h>
 
 #include <stdint.h>
+#include "options.h"
 #include "lsm9ds1.h"
 
 int
 main(int argc, char *argv[])
 {
+  struct options opts;
   struct LSM9DS1 dev;
+  uint8_t status = 0;
+  uint8_t val = 0;
+
+  options_init(&opts);
+  options_parse(&opts, argc, argv);
 
   dev.spidev_ag = "/dev/spidev0.0";
   dev.spidev_m  = "/dev/spidev0.1";
-  //dev.spi_clk_hz = 8000000;
-  dev.spi_clk_hz = 8000;
+  dev.spi_clk_hz = opts.spi_clk_hz;
 
   lsm9ds1_init(&dev);
 
-  uint8_t val = 0;
-  uint16_t data = 0;
+  if(opts.configure)
+  {
+    printf("configuring LSM9DS1\n");
+    lsm9ds1_configure(&dev);
+    lsm9ds1_test(&dev);
+  }
+  else if(opts.calibrate)
+  {
+    printf("setting LSM9DS1 bias\n");
+    lsm9ds1_ag_read_g_bias(&dev);
+    lsm9ds1_ag_read_xl_bias(&dev);
+  }
+  else if(opts.interrupt_thresh_g)
+  {
+    printf("setting LSM9DS1 G INT Thresholds\n");
+    struct point thresh;
+    thresh.x = 50;
+    thresh.y = 50;
+    thresh.z = 50;
+    lsm9ds1_ag_write_int_g_thresh(&dev, &thresh, 0, 0, 0);
+  }
+
   lsm9ds1_ag_read(&dev, WHO_AM_I, &val);
   printf("WHO_AM_I: 0x%02x\n", val);
 
-  lsm9ds1_ag_read(&dev, STATUS_REG, &val);
-  printf("STATUS_REG: 0x%02x\n", val);
+  lsm9ds1_ag_read(&dev, STATUS_REG, &status);
+  printf("STATUS_REG: 0x%02x\n", status);
 
-  lsm9ds1_ag_read(&dev, FIFO_CTRL, &val);
+  if(status & BOOT_STATUS)
+    printf("Boot running\n");
+  if(status & INACT)
+    printf("interrupts generated\n");
+  if(status & IG_XL)
+    printf("XL Interrupt\n");
+  if(status & IG_G)
+    printf("G  Interrupt\n");
+  if(status & TDA)
+    printf("T  Data Available\n");
+  if(status & GDA)
+    printf("G Data Available\n");
+  if(status & XLDA)
+    printf("XL Data Available\n");
+
+  lsm9ds1_ag_read(&dev, INT_GEN_SRC_G, &val);
+  printf("INT_GEN_SRC_G: 0x%02x\n", val);
+
+  lsm9ds1_ag_read(&dev, INT_GEN_SRC_XL, &val);
+  printf("INT_GEN_SRC_XL: 0x%02x\n", val);
+
+  lsm9ds1_ag_read(&dev, INT2_CTRL, &val);
+  printf("INT2_CTRL: 0x%02x\n", val);
+
+  lsm9ds1_ag_read(&dev, INT_GEN_SRC_G, &val);
+  printf("INT_GEN_SRC_G: 0x%02x\n", val);
+
+  lsm9ds1_ag_read(&dev, INT_GEN_SRC_XL, &val);
+  printf("INT_GEN_SRC_XL: 0x%02x\n", val);
+
+  /*lsm9ds1_ag_read(&dev, FIFO_CTRL, &val);
   printf("FIFO_CTRL: 0x%02x\n", val);
 
   lsm9ds1_ag_read(&dev, FIFO_SRC, &val);
@@ -38,40 +94,22 @@ main(int argc, char *argv[])
   if(val & OVRN)
     printf("FIFO is full\n");
   else
-    printf("FIFO is not full\n");
+    printf("FIFO not full\n");
 
   printf("FIFO has %d samples\n", val & FSS);
+  */
 
-  lsm9ds1_ag_read2(&dev, OUT_X_XL, &data);
-  printf("OUT_X_XL: 0x%02x\n", data);
+  printf("XL_BIAS: %+5d %+5d %+5d\n", dev.bias_xl.x, dev.bias_xl.y, dev.bias_xl.z);
+  printf(" G_BIAS: %+5d %+5d %+5d\n", dev.bias_g.x, dev.bias_g.y, dev.bias_g.z);
 
-  lsm9ds1_ag_read2(&dev, OUT_Y_XL, &data);
-  printf("OUT_Y_XL: 0x%02x\n", data);
+  lsm9ds1_ag_read_g(&dev);
+  lsm9ds1_ag_read_xl(&dev);
+  lsm9ds1_ag_read(&dev, STATUS_REG, &status);
 
-  lsm9ds1_ag_read2(&dev, OUT_Z_XL, &data);
-  printf("OUT_Z_XL: 0x%02x\n", data);
+  printf("      G: %+5d %+5d %+5d\n", dev.g.x, dev.g.y, dev.g.z);
+  printf("     XL: %+5d %+5d %+5d\n", dev.xl.x, dev.xl.y, dev.xl.z);
 
-  lsm9ds1_ag_read2(&dev, OUT_X_G, &data);
-  printf("OUT_X_G: 0x%02x\n", data);
-
-  lsm9ds1_ag_read2(&dev, OUT_Y_G, &data);
-  printf("OUT_Y_G: 0x%02x\n", data);
-
-  lsm9ds1_ag_read2(&dev, OUT_Z_G, &data);
-  printf("OUT_Z_G: 0x%02x\n", data);
-
-  lsm9ds1_ag_read2(&dev, OUT_TEMP_L, &data);
-  printf("OUT_TEMP_L: 0x%02x\n", data);
-
-
-
-
-
-  if(argc > 1)
-  {
-    printf("configuring LSM9DS1\n");
-    lsm9ds1_configure(&dev);
-  }
+  printf("STATUS_REG: 0x%02x\n", status);
 
   lsm9ds1_deinit(&dev);
 

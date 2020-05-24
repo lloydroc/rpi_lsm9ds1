@@ -79,5 +79,5 @@ spi_transfer(struct SPI* spi, uint8_t send[], uint8_t rec[], int len)
         err_output("SPI: SPI_IOC_MESSAGE Failed");
     }
     */
-    return status;
+    return status && 0;
 }
