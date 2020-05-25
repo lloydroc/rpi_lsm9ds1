@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include "lsm9ds1_regs.h"
+#include "options.h"
 #include "spi.h"
 #include "gpio.h"
 
@@ -25,6 +26,8 @@ struct LSM9DS1
 
   struct SPI spi_ag;
   struct SPI spi_m;
+
+  int odr;
 
   int int1_ag_pin;
   int int2_ag_pin;

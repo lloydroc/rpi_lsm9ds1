@@ -70,18 +70,18 @@ get_data(struct LSM9DS1 *dev)
   read(fd, buf, sizeof(buf));
   */
 
-  for(int i=0;i<3;i++)
+  for(int i=0;i<1000;i++)
   {
     ret = poll(&pfd, 1, timeout);
     if(ret == 0)
     {
       fprintf(stderr, "poll timed out\n");
-      continue;
+      break;
     }
     else if (ret < 0)
     {
       err_output("poll");
-      continue;
+      break;
     }
 
     lseek(fd, 0, SEEK_SET);
@@ -111,16 +111,17 @@ main(int argc, char *argv[])
   ret = options_parse(&opts, argc, argv);
   if(ret)
   {
-  	usage();
-      return EXIT_FAILURE;
+    usage();
+    return EXIT_FAILURE;
   }
 
   dev.spidev_ag = "/dev/spidev0.0";
   dev.spidev_m  = "/dev/spidev0.1";
   dev.spi_clk_hz = opts.spi_clk_hz;
+  dev.odr = opts.odr;
 
   lsm9ds1_init(&dev);
-  
+
   if(opts.help)
   {
     usage();

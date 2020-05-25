@@ -1,6 +1,17 @@
 #ifndef LSM9DS1_REGS_H
 #define LSM9DS1_REGS_H
 
+enum lsm9ds1_odr
+{
+  ODR_POWER_DOWN,
+  ODR_14p9_HZ,
+  ODR_59p5_HZ,
+  ODR_119_HZ,
+  ODR_238_HZ,
+  ODR_476_HZ,
+  ODR_952_HZ
+};
+
 #define ACT_THS 0x04
 #define SLEEP_ON_INACT_EN 0b10000000
 

@@ -10,7 +10,7 @@ usage(void)
 -z --spi-clk-hz Speed of SPI Clock\n\
 -c --configure  Write Configuration\n\
 -a --calibrate  Calibrate the LSM9DS\n\
--d --odr ODR Sample Frequency for G and XL\n\
+-d --odr ODR Sample Frequency for G and XL. Choose: 14.9, 59.5, 119, 238, 476 or 952\n\
 -g --interrupt-thresh-g  Set G Interrupt Thresholds\n\
 ");
 }
@@ -32,20 +32,20 @@ options_parse_odr(char *optval, int *odr)
 {
   *odr = -1;
   if(strcmp("0", optval) == 0)
-    *odr = 0;
-  else if(strcmp("15.9", optval) == 0)
-    *odr = 1;
+    *odr = ODR_POWER_DOWN;
+  else if(strcmp("14.9", optval) == 0)
+    *odr = ODR_14p9_HZ;
   else if(strcmp("59.5", optval) == 0)
-    *odr = 2;
+    *odr = ODR_59p5_HZ;
   else if(strcmp("119", optval) == 0)
-    *odr = 3;
+    *odr = ODR_119_HZ;
   else if(strcmp("238", optval) == 0)
-    *odr = 4;
+    *odr = ODR_238_HZ;
   else if(strcmp("476", optval) == 0)
-    *odr = 5;
+    *odr = ODR_476_HZ;
   else if(strcmp("952", optval) == 0)
-    *odr = 6;
-  return *odr != -1;
+    *odr = ODR_952_HZ;
+  return *odr == -1;
 }
 
 int
@@ -69,7 +69,7 @@ options_parse(struct options *opts, int argc, char *argv[])
   while(1)
   {
     option_index = 0;
-    c = getopt_long_only(argc, argv, "hrz:cadg", long_options, &option_index);
+    c = getopt_long_only(argc, argv, "hrz:cad:g", long_options, &option_index);
 
     if(c == -1)
       break;
@@ -95,6 +95,7 @@ options_parse(struct options *opts, int argc, char *argv[])
           opts->interrupt_thresh_g = 1;
 
       case 'h':
+        opts->help = 1;
         break;
       case 'r':
         opts->reset = 1;
@@ -127,6 +128,6 @@ options_parse(struct options *opts, int argc, char *argv[])
       printf("%s ", argv[optind++]);
     puts("");
   }
-  
+
   return ret;
 }

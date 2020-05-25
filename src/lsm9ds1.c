@@ -108,6 +108,14 @@ lsm9ds1_configure(struct LSM9DS1* lsm9ds1)
   {
     reg = LSM9DS1_INIT0[i][0];
     val = LSM9DS1_INIT0[i][1];
+
+    if(reg == CTRL_REG1_G || reg == CTRL_REG6_XL)
+    {
+      // first 3 bits are the odr
+      reg &= 0b00011111;
+      reg |= (lsm9ds1->odr << 5);
+    }
+
     lsm9ds1_ag_write(lsm9ds1, reg, val);
     lsm9ds1_ag_read(lsm9ds1, reg, &tval);
 
