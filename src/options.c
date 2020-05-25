@@ -30,7 +30,7 @@ options_init(struct options *opts)
 int
 options_parse_odr(char *optval, int *odr)
 {
-  int odr = -1;
+  *odr = -1;
   if(strcmp("0", optval) == 0)
     *odr = 0;
   else if(strcmp("15.9", optval) == 0)
