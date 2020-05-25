@@ -45,7 +45,7 @@ options_parse_odr(char *optval, int *odr)
     *odr = 5;
   else if(strcmp("952", optval) == 0)
     *odr = 6;
-  return odr != -1;
+  return *odr != -1;
 }
 
 int
