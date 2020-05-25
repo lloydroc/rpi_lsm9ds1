@@ -47,6 +47,14 @@ gpio_set_direction(int gpio, int input);
 int
 gpio_get_direction(int gpio, int *input);
 
+/*
+int
+gpio_set_edge(int gpio, int edge);
+
+int
+gpio_get_edge(int gpio, int *edge);
+*/
+
 #define gpio_open_output(gpio) gpio_open(gpio,0)
 #define gpio_open_input(gpio) gpio_open(gpio,1)
 

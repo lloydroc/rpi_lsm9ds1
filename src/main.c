@@ -70,7 +70,7 @@ get_data(struct LSM9DS1 *dev)
   read(fd, buf, sizeof(buf));
   */
 
-  for(int i=0;i<30000;i++)
+  for(int i=0;i<3;i++)
   {
     ret = poll(&pfd, 1, timeout);
     if(ret == 0)

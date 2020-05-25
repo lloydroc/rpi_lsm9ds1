@@ -8,10 +8,12 @@
 
 struct options
 {
+  int help;
   int reset;
   long spi_clk_hz;
   int configure;
   int calibrate;
+  int odr;
   int interrupt_thresh_g;
 };
 
