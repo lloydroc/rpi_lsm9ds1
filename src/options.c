@@ -89,7 +89,7 @@ options_parse(struct options *opts, int argc, char *argv[])
         opts->calibrate = 1;
       else if(strcmp("odr", long_options[option_index].name) == 0)
       {
-        ret = options_parse_odr(optarg, &opt->odr);
+        ret = options_parse_odr(optarg, &opts->odr);
       }
       else if(strcmp("interrupt-thresh-g", long_options[option_index].name) == 0)
           opts->interrupt_thresh_g = 1;

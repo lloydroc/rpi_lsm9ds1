@@ -105,6 +105,7 @@ main(int argc, char *argv[])
   struct LSM9DS1 dev;
   uint8_t status = 0;
   uint8_t val = 0;
+  int ret;
 
   options_init(&opts);
   ret = options_parse(&opts, argc, argv);
