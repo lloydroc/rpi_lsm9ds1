@@ -10,7 +10,7 @@ usage(void)
 -z --spi-clk-hz Speed of SPI Clock\n\
 -c --configure  Write Configuration\n\
 -a --calibrate  Calibrate the LSM9DS\n\
--r --odr ODR Sample Frequency for G and XL\n\
+-d --odr ODR Sample Frequency for G and XL\n\
 -g --interrupt-thresh-g  Set G Interrupt Thresholds\n\
 ");
 }
@@ -28,31 +28,32 @@ options_init(struct options *opts)
 }
 
 int
-options_parse_odr(char *optval)
+options_parse_odr(char *optval, int *odr)
 {
   int odr = -1;
   if(strcmp("0", optval) == 0)
-    odr = 0;
+    *odr = 0;
   else if(strcmp("15.9", optval) == 0)
-    odr = 1;
+    *odr = 1;
   else if(strcmp("59.5", optval) == 0)
-    odr = 2;
+    *odr = 2;
   else if(strcmp("119", optval) == 0)
-    odr = 3;
+    *odr = 3;
   else if(strcmp("238", optval) == 0)
-    odr = 4;
+    *odr = 4;
   else if(strcmp("476", optval) == 0)
-    odr = 5;
+    *odr = 5;
   else if(strcmp("952", optval) == 0)
-    odr = 6;
-  return odr;
+    *odr = 6;
+  return odr != -1;
 }
 
-void
+int
 options_parse(struct options *opts, int argc, char *argv[])
 {
   int c;
   int option_index;
+  int ret = 0;
   static struct option long_options[] =
   {
     {"help",                     no_argument, 0,  0},
@@ -68,7 +69,7 @@ options_parse(struct options *opts, int argc, char *argv[])
   while(1)
   {
     option_index = 0;
-    c = getopt_long_only(argc, argv, "hrz:carg", long_options, &option_index);
+    c = getopt_long_only(argc, argv, "hrz:cadg", long_options, &option_index);
 
     if(c == -1)
       break;
@@ -88,13 +89,12 @@ options_parse(struct options *opts, int argc, char *argv[])
         opts->calibrate = 1;
       else if(strcmp("odr", long_options[option_index].name) == 0)
       {
-        opts->odr = options_parse_odr(optarg);
+        ret = options_parse_odr(optarg, &opt->odr);
       }
       else if(strcmp("interrupt-thresh-g", long_options[option_index].name) == 0)
           opts->interrupt_thresh_g = 1;
 
       case 'h':
-        usage();
         break;
       case 'r':
         opts->reset = 1;
@@ -108,6 +108,9 @@ options_parse(struct options *opts, int argc, char *argv[])
       case 'a':
         opts->calibrate = 1;
         break;
+      case 'd':
+         ret = options_parse_odr(optarg, &opt->odr);
+         break;
       case 'g':
         opts->interrupt_thresh_g = 1;
         break;
@@ -124,4 +127,6 @@ options_parse(struct options *opts, int argc, char *argv[])
       printf("%s ", argv[optind++]);
     puts("");
   }
+  
+  return ret;
 }

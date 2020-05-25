@@ -107,15 +107,25 @@ main(int argc, char *argv[])
   uint8_t val = 0;
 
   options_init(&opts);
-  options_parse(&opts, argc, argv);
+  ret = options_parse(&opts, argc, argv);
+  if(ret)
+  {
+  	usage();
+      return EXIT_FAILURE;
+  }
 
   dev.spidev_ag = "/dev/spidev0.0";
   dev.spidev_m  = "/dev/spidev0.1";
   dev.spi_clk_hz = opts.spi_clk_hz;
 
   lsm9ds1_init(&dev);
-
-  if(opts.reset)
+  
+  if(opts.help)
+  {
+    usage();
+    return EXIT_SUCCESS;
+  }
+  else if(opts.reset)
   {
     lsm9ds1_reset(&dev);
   }
