@@ -2,8 +2,101 @@
 #include <stdio.h>
 
 #include <stdint.h>
+#include <poll.h>
+#include <sys/time.h>
+#include "error.h"
 #include "options.h"
 #include "lsm9ds1.h"
+
+/*
+int
+configure_interrupt(int gpio)
+{
+  if(gpio_exists())
+    _exit(77);
+
+  gpio_permissions_valid();
+  gpio_unexport(gpio);
+
+  if(gpio_valid(gpio))
+  {
+    return EXIT_FAILURE;
+  }
+
+  if(gpio_export(gpio))
+  {
+    return EXIT_FAILURE;
+  }
+
+  if(gpio_set_edge(gpio))
+  {
+    return EXIT_FAILURE;
+  }
+
+  return gpio_open_edge(gpio);
+}
+
+int
+unconfigure_interrupt(int gpio, int fd)
+{
+  gpio_close(fd);
+  return gpio_unexport(gpio);
+}
+*/
+
+int
+get_data(struct LSM9DS1 *dev)
+{
+  int timeout;
+  struct pollfd pfd;
+  int fd;
+  int ret;
+  char buf[8];
+
+  timeout = 1000;
+
+  if((fd = open("/sys/class/gpio/gpio13/value", O_RDONLY)) < 0)
+  {
+    fprintf(stderr, "Failed to open gpio\n");
+    return 1;
+  }
+
+  pfd.fd = fd;
+
+  pfd.events = POLLPRI;
+
+  /*
+  lseek(fd, 0, SEEK_SET);
+  read(fd, buf, sizeof(buf));
+  */
+
+  for(int i=0;i<30000;i++)
+  {
+    ret = poll(&pfd, 1, timeout);
+    if(ret == 0)
+    {
+      fprintf(stderr, "poll timed out\n");
+      continue;
+    }
+    else if (ret < 0)
+    {
+      err_output("poll");
+      continue;
+    }
+
+    lseek(fd, 0, SEEK_SET);
+    read(fd, buf, sizeof(buf));
+
+    pfd.fd = fd;
+
+    lsm9ds1_ag_read_g(dev);
+    lsm9ds1_ag_read_xl(dev);
+  }
+
+  close(fd);
+
+  return 1;
+}
 
 int
 main(int argc, char *argv[])
@@ -22,7 +115,11 @@ main(int argc, char *argv[])
 
   lsm9ds1_init(&dev);
 
-  if(opts.configure)
+  if(opts.reset)
+  {
+    lsm9ds1_reset(&dev);
+  }
+  else if(opts.configure)
   {
     printf("configuring LSM9DS1\n");
     lsm9ds1_configure(&dev);
@@ -38,10 +135,11 @@ main(int argc, char *argv[])
   {
     printf("setting LSM9DS1 G INT Thresholds\n");
     struct point thresh;
-    thresh.x = 50;
-    thresh.y = 50;
-    thresh.z = 50;
+    thresh.x = 0x0000;
+    thresh.y = 0x3030;
+    thresh.z = 0x0000;
     lsm9ds1_ag_write_int_g_thresh(&dev, &thresh, 0, 0, 0);
+    printf("G INT Thresh: 0x%4x 0x%4x 0x%4x\n", thresh.x, thresh.y, thresh.z);
   }
 
   lsm9ds1_ag_read(&dev, WHO_AM_I, &val);
@@ -61,7 +159,7 @@ main(int argc, char *argv[])
   if(status & TDA)
     printf("T  Data Available\n");
   if(status & GDA)
-    printf("G Data Available\n");
+    printf("G  Data Available\n");
   if(status & XLDA)
     printf("XL Data Available\n");
 
@@ -110,6 +208,8 @@ main(int argc, char *argv[])
   printf("     XL: %+5d %+5d %+5d\n", dev.xl.x, dev.xl.y, dev.xl.z);
 
   printf("STATUS_REG: 0x%02x\n", status);
+
+  get_data(&dev);
 
   lsm9ds1_deinit(&dev);
 

@@ -3,16 +3,20 @@
 /* Interrupt driven for XL and G */
 uint8_t LSM9DS1_INIT0[][2] =
 {
-  { CTRL_REG8,      BDU | H_LACTIVE | PP_OD | IF_ADD_INC },
+//  { CTRL_REG8,      BDU | H_LACTIVE | IF_ADD_INC },
+  { CTRL_REG8,      BDU | IF_ADD_INC },
   { CTRL_REG9,      I2C_DISABLE },
   { CTRL_REG4,      0b00111011 },
   { CTRL_REG1_G,    0b10000001 }, // G Angular rate sensor control
   { CTRL_REG5_XL,   0b00111000 },
   { CTRL_REG6_XL,   0b10000111 }, // XL
-  { INT_GEN_CFG_XL, 0b01111111 }, // 6 Direction detection, ALL Interrupts
-  { INT_GEN_CFG_G,  0b00111111 }, // 6 Direction detection, ALL Interrupts
+//  { INT_GEN_CFG_XL, 0b01111111 }, // 6 Direction detection, ALL Interrupts
+//  { INT_GEN_CFG_G,  ZHIE_G },
+  { INT_GEN_CFG_G,  LIR_G },
 //  { INT1_CTRL,      INT1_IG_G | INT1_IG_XL | INT_DRDY_G | INT_DRDY_XL },
-  { INT1_CTRL,      INT1_IG_G |  INT_DRDY_G },
+  { INT1_CTRL,        INT_DRDY_G },
+//  { INT1_CTRL,        INT1_IG_G },
+//  { INT1_CTRL,      INT1_IG_G |  INT_DRDY_G },
 //  { INT2_CTRL,      INT2_INACT }, // Interruprt on INT2_A/G Pin when G Data Ready
   { FIFO_CTRL,      0b00000000 }, // FIFO OFF
 };
@@ -54,16 +58,41 @@ lsm9ds1_init(struct LSM9DS1* lsm9ds1)
     return ret;
   }
 
+  lsm9ds1->bias_xl.x = 0;
+  lsm9ds1->bias_xl.y = 0;
+  lsm9ds1->bias_xl.z = 0;
+  lsm9ds1->bias_g.x = 0;
+  lsm9ds1->bias_g.y = 0;
+  lsm9ds1->bias_g.z = 0;
+
   return ret;
 }
 
+int
+lsm9ds1_reset(struct LSM9DS1* lsm9ds1)
+{
+  int ret;
+  uint8_t status = BOOT;
+  int safety = 100000;
+  ret  = lsm9ds1_ag_write(lsm9ds1, CTRL_REG1_G, 0);
+  ret |= lsm9ds1_ag_write(lsm9ds1, CTRL_REG6_XL, 0);
+  //ret |= lsm9ds1_ag_write(lsm9ds1, CTRL_REG8, BOOT | SW_RESET);
+  ret |= lsm9ds1_ag_write(lsm9ds1, CTRL_REG8, BOOT);
+  while(status & BOOT)
+  {
+    lsm9ds1_ag_read_status(lsm9ds1, &status);
+    printf("reset");
+    if(safety-- == 0)
+      return 1;
+  }
+  return ret;
+}
 
 int
 lsm9ds1_test(struct LSM9DS1* lsm9ds1)
 {
     lsm9ds1_ag_write(lsm9ds1, CTRL_REG10, 0); // disable self-test
     lsm9ds1_ag_write(lsm9ds1, CTRL_REG10, ST_G | ST_XL); // enable self-test
-    usleep(200000);
     lsm9ds1_ag_write(lsm9ds1, CTRL_REG10, 0); // disable self-test
 
     return 0;
@@ -80,7 +109,6 @@ lsm9ds1_configure(struct LSM9DS1* lsm9ds1)
     reg = LSM9DS1_INIT0[i][0];
     val = LSM9DS1_INIT0[i][1];
     lsm9ds1_ag_write(lsm9ds1, reg, val);
-    //usleep(200000);
     lsm9ds1_ag_read(lsm9ds1, reg, &tval);
 
     // read back what we wrote to confirm correct
@@ -116,7 +144,7 @@ lsm9ds1_ag_read(struct LSM9DS1* lsm9ds1, uint8_t reg, uint8_t *data)
 }
 
 int
-lsm9ds1_ag_read2(struct LSM9DS1* lsm9ds1, uint8_t reg, uint16_t *data)
+lsm9ds1_ag_read2(struct LSM9DS1* lsm9ds1, uint8_t reg, int16_t *data)
 {
   int ret;
   uint8_t tx[3], rx[3];
@@ -140,7 +168,7 @@ lsm9ds1_ag_read_xyz(struct LSM9DS1* lsm9ds1, uint8_t reg, struct point *xyz)
   int ret;
   uint8_t tx[7], rx[7];
   tx[0] = 0x80 | reg;
-  ret = spi_transfer(&lsm9ds1->spi_ag, tx, rx, 3);
+  ret = spi_transfer(&lsm9ds1->spi_ag, tx, rx, 7);
   xyz->x = rx[1] + (rx[2] << 8);
   xyz->y = rx[3] + (rx[4] << 8);
   xyz->z = rx[5] + (rx[6] << 8);
@@ -256,13 +284,20 @@ lsm9ds1_ag_write_int_g_thresh(struct LSM9DS1* lsm9ds1, struct point *xyz, int dc
 
   if(dcrm)
     xyz->x |= DCRM_G;
+  else
+    xyz->x &= 0x7fff;
 
   ret  = lsm9ds1_ag_write2(lsm9ds1, INT_GEN_THS_X_G, xyz->x);
-  ret |= lsm9ds1_ag_write2(lsm9ds1, INT_GEN_THS_Y_G, xyz->x);
-  ret |= lsm9ds1_ag_write2(lsm9ds1, INT_GEN_THS_Z_G, xyz->x);
+  ret |= lsm9ds1_ag_write2(lsm9ds1, INT_GEN_THS_Y_G, xyz->y & 0x7fff);
+  ret |= lsm9ds1_ag_write2(lsm9ds1, INT_GEN_THS_Z_G, xyz->z & 0x7fff);
 
   if(wait)
-    ret |= lsm9ds1_ag_write(lsm9ds1, INT_GEN_DUR_G, WAIT_G | dur);
+    dur |= WAIT_G;
+  ret |= lsm9ds1_ag_write(lsm9ds1, INT_GEN_DUR_G, dur);
+
+  ret |= lsm9ds1_ag_read2(lsm9ds1, INT_GEN_THS_X_G, &xyz->x);
+  ret |= lsm9ds1_ag_read2(lsm9ds1, INT_GEN_THS_Y_G, &xyz->y);
+  ret |= lsm9ds1_ag_read2(lsm9ds1, INT_GEN_THS_Z_G, &xyz->z);
 
   return ret;
 }

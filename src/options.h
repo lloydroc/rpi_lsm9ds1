@@ -8,6 +8,7 @@
 
 struct options
 {
+  int reset;
   long spi_clk_hz;
   int configure;
   int calibrate;

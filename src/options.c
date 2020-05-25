@@ -5,7 +5,9 @@ usage(void)
 {
   printf("\nUsage: lsm9ds1 [OPTIONS]\n\n");
   printf("OPTIONS:\n\
--h --spi-clk-hz Speed of SPI Clock\n\
+-h --help Print help\n\
+-r --reset SW Reset\n\
+-z --spi-clk-hz Speed of SPI Clock\n\
 -c --configure  Write Configuration\n\
 -a --calibrate  Calibrate the LSM9DS\n\
 -g --interrupt-thresh-g  Set G Interrupt Thresholds\n\
@@ -15,9 +17,11 @@ usage(void)
 void
 options_init(struct options *opts)
 {
+  opts->reset = 0;
   opts->spi_clk_hz = 8000000;
   opts->configure = 0;
   opts->calibrate = 0;
+  opts->interrupt_thresh_g = 0;
 }
 
 void
@@ -27,6 +31,8 @@ options_parse(struct options *opts, int argc, char *argv[])
   int option_index;
   static struct option long_options[] =
   {
+    {"help",                     no_argument, 0,  0},
+    {"reset",                    no_argument, 0,  0},
     {"spi-clk-hz",         required_argument, 0, 'h'},
     {"configure",                no_argument, 0,  0},
     {"calibrate",                no_argument, 0,  0},
@@ -37,7 +43,7 @@ options_parse(struct options *opts, int argc, char *argv[])
   while(1)
   {
     option_index = 0;
-    c = getopt_long_only(argc, argv, "h:cag", long_options, &option_index);
+    c = getopt_long_only(argc, argv, "hrz:cag", long_options, &option_index);
 
     if(c == -1)
       break;
@@ -45,7 +51,9 @@ options_parse(struct options *opts, int argc, char *argv[])
     switch(c)
     {
     case 0:
-      if(strcmp("spi-clk-hz", long_options[option_index].name) == 0)
+      if(strcmp("reset", long_options[option_index].name) == 0)
+          opts->reset = 1;
+      else if(strcmp("spi-clk-hz", long_options[option_index].name) == 0)
           opts->spi_clk_hz = atol(optarg);
       else if(strcmp("configure", long_options[option_index].name) == 0)
           opts->configure = 1;
@@ -55,6 +63,12 @@ options_parse(struct options *opts, int argc, char *argv[])
           opts->interrupt_thresh_g = 1;
 
       case 'h':
+        usage();
+        break;
+      case 'r':
+        opts->reset = 1;
+        break;
+      case 'z':
         opts->spi_clk_hz = atol(optarg);
         break;
       case 'c':

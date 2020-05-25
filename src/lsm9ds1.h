@@ -2,7 +2,6 @@
 #define LSM9DS1_H
 
 #include <stdint.h>
-#include <time.h>
 #include "lsm9ds1_regs.h"
 #include "spi.h"
 #include "gpio.h"
@@ -12,9 +11,9 @@ extern size_t LSM9DS1_INIT0_SIZE;
 
 struct point
 {
-  uint8_t x;
-  uint8_t y;
-  uint8_t z;
+  int16_t x;
+  int16_t y;
+  int16_t z;
 };
 
 struct LSM9DS1
@@ -46,6 +45,9 @@ int
 lsm9ds1_deinit(struct LSM9DS1* lsm9ds1);
 
 int
+lsm9ds1_reset(struct LSM9DS1* lsm9ds1);
+
+int
 lsm9ds1_test(struct LSM9DS1* lsm9ds1);
 
 int
@@ -55,7 +57,7 @@ int
 lsm9ds1_ag_read(struct LSM9DS1* lsm9ds1, uint8_t reg, uint8_t *data);
 
 int
-lsm9ds1_ag_read2(struct LSM9DS1* lsm9ds1, uint8_t reg, uint16_t *data);
+lsm9ds1_ag_read2(struct LSM9DS1* lsm9ds1, uint8_t reg, int16_t *data);
 
 int
 lsm9ds1_ag_read_status(struct LSM9DS1* lsm9ds1, uint8_t *status);
