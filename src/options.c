@@ -109,7 +109,7 @@ options_parse(struct options *opts, int argc, char *argv[])
         opts->calibrate = 1;
         break;
       case 'd':
-         ret = options_parse_odr(optarg, &opt->odr);
+         ret = options_parse_odr(optarg, &opts->odr);
          break;
       case 'g':
         opts->interrupt_thresh_g = 1;
