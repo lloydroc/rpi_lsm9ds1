@@ -25,6 +25,8 @@ enum lsm9ds1_odr
 #define XHIE_XL        0b00000010
 #define XLIE_XL        0b00000001
 
+#define REFERENCE_G 0x0B
+
 #define INT1_CTRL   0x0C
 #define INT1_IG_G   0b10000000
 #define INT1_IG_XL  0b01000000
@@ -44,7 +46,8 @@ enum lsm9ds1_odr
 #define INT2_DRDY_G    0b00000010
 #define INT2_DRDY_XL   0b00000001
 
-#define WHO_AM_I 0x0F
+#define WHO_AM_I     0x0F
+#define WHO_AM_I_VAL 0b01101000
 
 #define CTRL_REG1_G 0x10
 #define CTRL_REG2_G 0x11

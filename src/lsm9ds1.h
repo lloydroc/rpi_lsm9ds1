@@ -20,12 +20,10 @@ struct point
 struct LSM9DS1
 {
   char *spidev_ag;
-  char *spidev_m;
 
   int spi_clk_hz;
 
   struct SPI spi_ag;
-  struct SPI spi_m;
 
   int odr;
 
@@ -37,8 +35,6 @@ struct LSM9DS1
 
   struct point g;
   struct point xl;
-  struct point bias_g;
-  struct point bias_xl;
 };
 
 int
@@ -57,6 +53,12 @@ int
 lsm9ds1_configure(struct LSM9DS1* lsm9ds1);
 
 int
+lsm9ds1_configure_ag_interrupt(int gpio, int *fd);
+
+int
+lsm9ds1_unconfigure_ag_interrupt(int gpio, int fd);
+
+int
 lsm9ds1_ag_read(struct LSM9DS1* lsm9ds1, uint8_t reg, uint8_t *data);
 
 int
@@ -66,13 +68,10 @@ int
 lsm9ds1_ag_read_status(struct LSM9DS1* lsm9ds1, uint8_t *status);
 
 int
+lsm9ds1_ag_print_status(struct LSM9DS1* lsm9ds1);
+
+int
 lsm9ds1_ag_read_xyz(struct LSM9DS1* lsm9ds1, uint8_t reg, struct point *xyz);
-
-int
-lsm9ds1_ag_read_xl_bias(struct LSM9DS1* lsm9ds1);
-
-int
-lsm9ds1_ag_read_g_bias(struct LSM9DS1* lsm9ds1);
 
 int
 lsm9ds1_ag_read_xl(struct LSM9DS1* lsm9ds1);
@@ -88,5 +87,11 @@ lsm9ds1_ag_write(struct LSM9DS1* lsm9ds1, uint8_t reg, uint8_t data);
 
 int
 lsm9ds1_ag_write2(struct LSM9DS1* lsm9ds1, uint8_t reg, int16_t data);
+
+void
+lsm9ds1_ag_write_terminal(struct LSM9DS1* dev);
+
+void
+lsm9ds1_ag_write_file(struct LSM9DS1* dev, FILE* file, int binary);
 
 #endif

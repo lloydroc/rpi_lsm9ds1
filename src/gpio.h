@@ -18,10 +18,17 @@
 #define GPIO_PATH "/sys/class/gpio"
 #define GPIO_EXPORT_PATH "/sys/class/gpio/export"
 #define GPIO_DIRECTION_PATH "/sys/class/gpio/gpio%d/direction"
+#define GPIO_EDGE_PATH "/sys/class/gpio/gpio%d/edge"
 #define GPIO_VALUE_PATH "/sys/class/gpio/gpio%d/value"
 #define GPIO_UNEXPORT_PATH "/sys/class/gpio/unexport"
 
-// TODO map pin to cpu ports
+enum edge
+{
+  none,
+  rising,
+  falling,
+  both
+};
 
 int
 gpio_exists();
@@ -29,6 +36,7 @@ gpio_exists();
 int
 gpio_permissions_valid();
 
+// TODO map pin to cpu ports
 int
 gpio_valid(int gpio);
 
@@ -47,13 +55,15 @@ gpio_set_direction(int gpio, int input);
 int
 gpio_get_direction(int gpio, int *input);
 
-/*
+#define gpio_set_edge_rising(gpio) gpio_set_edge(gpio, rising)
+#define gpio_set_edge_falling(gpio) gpio_set_edge(gpio, falling)
+#define gpio_set_edge_both(gpio) gpio_set_edge(gpio, both)
+
 int
 gpio_set_edge(int gpio, int edge);
 
 int
 gpio_get_edge(int gpio, int *edge);
-*/
 
 #define gpio_open_output(gpio) gpio_open(gpio,0)
 #define gpio_open_input(gpio) gpio_open(gpio,1)

@@ -17,21 +17,21 @@ gpio_permissions_valid()
 
     ngroups = getgroups(1024, groups);
     if(ngroups == -1)
-        err_exit("unable to get groups");
+        err_output("unable to get groups");
 
     ret = stat(GPIO_EXPORT_PATH, &statbuf);
     if(ret)
-        err_exit("unable to GPIO on %s\n", GPIO_EXPORT_PATH);
+        err_output("unable to GPIO on %s\n", GPIO_EXPORT_PATH);
 
     for(int i=0;i<ngroups;i++)
     {
-        // user is probably root, but definitely owns the file!
+        // file has same uid as the user and has write privledges
         if(uid == statbuf.st_uid && (statbuf.st_mode & S_IWUSR))
-            return 2;
+            return 0;
 
         // user is in file's group and has write permissions
         if(groups[i] == statbuf.st_gid && (statbuf.st_mode & S_IWGRP))
-            return 2;
+            return 0;
     }
 
     return -1;
@@ -108,19 +108,26 @@ gpio_export(int gpio)
     char path[64];
     char val[3];
 
-    sprintf(path,GPIO_EXPORT_PATH);
-    sprintf(val,"%d",gpio);
-    printf("gpio_export: %s %s\n",path,val);
-    fd = open(path,O_WRONLY);
+    // check if it already exists
+    sprintf(path, GPIO_DIRECTION_PATH, gpio);
+    sprintf(val, "%d", gpio);
+    if(access(path, F_OK) == 0)
+      return 0;
+
+    sprintf(path, GPIO_EXPORT_PATH);
+    sprintf(val, "%d", gpio);
+
+
+    fd = open(path, O_WRONLY);
     if(fd == -1)
     {
-        fprintf(stderr,"Exception exporting GPIO %d",gpio);
+        fprintf(stderr, "Exception exporting GPIO %d", gpio);
         perror("GPIO: Unable to open");
         close(fd);
         return -1;
     }
 
-    if(write(fd,val,strlen(val))<0)
+    if(write(fd, val, strlen(val)) < 0)
     {
         perror("GPIO: Unable to set output");
         close(fd);
@@ -128,7 +135,7 @@ gpio_export(int gpio)
     }
     close(fd);
 
-    sprintf(path,GPIO_VALUE_PATH,gpio);
+    sprintf(path, GPIO_VALUE_PATH, gpio);
     fd = 1 << 10;
     while(access(path, F_OK) == -1)
     {
@@ -141,7 +148,7 @@ gpio_export(int gpio)
 }
 
 static int
-gpio_check_direction_permissions_bug(char *path)
+gpio_check_permissions_bug(char *path)
 {
 
   int ret;
@@ -154,7 +161,7 @@ gpio_check_direction_permissions_bug(char *path)
     ret = stat(path, &statbuf);
     if(ret)
     {
-        err_exit("unable to stat %s\n",path);
+        err_output("unable to stat %s\n", path);
     }
 
     if(uid == statbuf.st_uid && (statbuf.st_mode & S_IWUSR))
@@ -164,7 +171,7 @@ gpio_check_direction_permissions_bug(char *path)
   } while(!canwrite | (--MAXITER < 0));
 
   if(MAXITER < 0)
-    err_exit("unable to get write permissions on %s\n", path);
+    err_output("unable to get write permissions on %s\n", path);
 
   return 0;
 }
@@ -179,15 +186,14 @@ gpio_get_direction(int gpio, int *input)
     FILE* dir;
     char direction[4];
 
-    sprintf(path,GPIO_DIRECTION_PATH,gpio);
-    if(gpio_check_direction_permissions_bug(path))
+    sprintf(path, GPIO_DIRECTION_PATH, gpio);
+    if(gpio_check_permissions_bug(path))
     {
-        err_exit("unable to get write permissions on %s\n", path);
+        err_output("unable to get write permissions on %s\n", path);
         return 1;
     }
 
-    printf("gpio_get_direction: %s\n",path);
-    dir = fopen(path,"r");
+    dir = fopen(path, "r");
     if(dir == NULL)
     {
         err_output("Exception opening %s\n", path);
@@ -204,8 +210,8 @@ gpio_get_direction(int gpio, int *input)
     }
     fclose(dir);
 
-    if(strcmp("in", direction) == 0) *input = 1;
-    else if(strcmp("out", direction) == 0) *input = 0;
+         if(strstr(direction, "in")  == direction) *input = 1;
+    else if(strstr(direction, "out") == direction) *input = 0;
     else return -1;
 
     return 0;
@@ -219,20 +225,19 @@ gpio_set_direction(int gpio, int input)
     char val[4];
     int fd;
 
-    sprintf(path,GPIO_DIRECTION_PATH,gpio);
-    if(gpio_check_direction_permissions_bug(path))
+    sprintf(path, GPIO_DIRECTION_PATH, gpio);
+    if(gpio_check_permissions_bug(path))
     {
-        err_exit("unable to get write permissions on %s\n", path);
+        err_output("unable to get write permissions on %s\n", path);
         return 1;
     }
 
     if(input)
-      sprintf(val,"in");
+      sprintf(val, "in");
     else
-      sprintf(val,"out");
+      sprintf(val, "out");
 
-    printf("gpio_set_direction: %s %s\n",path,val);
-    fd = open(path,O_WRONLY);
+    fd = open(path, O_WRONLY);
     if(fd == -1)
     {
         err_output("Exception opening %s\n", path);
@@ -240,7 +245,7 @@ gpio_set_direction(int gpio, int input)
         return -1;
     }
 
-    if(write(fd,val,strlen(val))<0)
+    if(write(fd, val, strlen(val)) < 0)
     {
         err_output("GPIO: Unable to set direction");
         close(fd);
@@ -256,26 +261,106 @@ gpio_open(int gpio, int input)
     int fd;
     char path[64];
 
-    sprintf(path,GPIO_VALUE_PATH,gpio);
+    sprintf(path, GPIO_VALUE_PATH, gpio);
 
     if(input)
-      fd = open(path,O_RDONLY);
+      fd = open(path, O_RDONLY);
     else
-      fd = open(path,O_WRONLY);
+      fd = open(path, O_WRONLY);
 
     if(fd == -1)
     {
         err_output("Exception opening %s will retry\n", path);
-        fd = gpio_check_direction_permissions_bug(path);
+        fd = gpio_check_permissions_bug(path);
         if(input)
-          fd = open(path,O_RDONLY);
+          fd = open(path, O_RDONLY);
         else
-          fd = open(path,O_WRONLY);
+          fd = open(path, O_WRONLY);
         if(fd == -1)
           err_output("Exception opening %s\n", path);
     }
-    printf("gpio_open: %s input=%d fd=%d\n", path, input, fd);
     return fd;
+}
+
+int
+gpio_set_edge(int gpio, int edge)
+{
+    char path[33];
+    char val[16];
+    int fd;
+
+    sprintf(path, GPIO_EDGE_PATH, gpio);
+    if(gpio_check_permissions_bug(path))
+    {
+        err_output("unable to get write permissions on %s\n", path);
+        return 1;
+    }
+
+    if(edge == rising)
+      sprintf(val, "rising");
+    else if (edge == falling)
+      sprintf(val, "falling");
+    else if (edge == both)
+      sprintf(val, "both");
+    else
+      return 1;
+
+    fd = open(path, O_WRONLY);
+    if(fd == -1)
+    {
+        err_output("Exception opening %s\n", path);
+        close(fd);
+        return -1;
+    }
+
+    if(write(fd, val, strlen(val))<0)
+    {
+        err_output("GPIO: Unable to set edge");
+        close(fd);
+        return -1;
+    }
+    return close(fd);
+}
+
+int
+gpio_get_edge(int gpio, int *edge)
+{
+    char path[33];
+    char *ret;
+    FILE* dir;
+    char edge_buf[16];
+
+    sprintf(path, GPIO_EDGE_PATH, gpio);
+    if(gpio_check_permissions_bug(path))
+    {
+        err_output("unable to get write permissions on %s\n", path);
+        return 1;
+    }
+
+    dir = fopen(path, "r");
+    if(dir == NULL)
+    {
+        err_output("Exception opening %s\n", path);
+        fclose(dir);
+        return -1;
+    }
+
+    ret = fgets(edge_buf, 16, dir);
+    if(ret == NULL)
+    {
+        err_output("GPIO: Unable to get edge from %s\n", path);
+        fclose(dir);
+        return -1;
+    }
+    fclose(dir);
+
+         if(strstr(edge_buf, "none")    == edge_buf) *edge = none;
+    else if(strstr(edge_buf, "rising")  == edge_buf) *edge = rising;
+    else if(strstr(edge_buf, "falling") == edge_buf) *edge = falling;
+    else if(strstr(edge_buf, "both")    == edge_buf) *edge = both;
+    else return -1;
+
+    return 0;
 }
 
 // close file /sys/class/gpio/gpio4/value
@@ -284,7 +369,6 @@ gpio_close(int fd)
 {
     int ret;
     ret = close(fd);
-    printf("gpio_close: fd=%d\n", fd);
     if(fd == -1)
     {
         err_output("Exception closing %d\n", fd);
@@ -296,8 +380,8 @@ int
 gpio_write(int fd, int val)
 {
     char cval[4];
-    sprintf(cval,"%d",val);
-    int ret = write(fd,cval,strlen(cval));
+    sprintf(cval, "%d", val);
+    int ret = write(fd, cval, strlen(cval));
     if(ret<0)
         perror("GPIO: unable to perform gpio write");
     return ret;
@@ -323,17 +407,17 @@ gpio_unexport(int gpio)
     char path[64];
     char val[3];
 
-    sprintf(path,GPIO_UNEXPORT_PATH);
-    sprintf(val,"%d",gpio);
-    printf("gpio_unexport: %s %s\n",path,val);
-    fd = open(path,O_WRONLY);
+    sprintf(path, GPIO_UNEXPORT_PATH);
+    sprintf(val, "%d", gpio);
+
+    fd = open(path, O_WRONLY);
     if(fd == -1)
     {
-      fprintf(stderr,"Exception unexporting GPIO %s %s",path, val);
+      fprintf(stderr, "Exception unexporting GPIO %s %s", path, val);
       return -1;
     }
 
-    if(write(fd,val,strlen(val))<0)
+    if(write(fd, val, strlen(val)) < 0)
     {
       err_output("GPIO: Unable to unexport %s %s", path, val);
       return -1;

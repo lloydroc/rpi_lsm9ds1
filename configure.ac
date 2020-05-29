@@ -1,13 +1,12 @@
 AC_INIT([rpi_lsm9ds1], [1.0], [lloyd@lloydrochester.com])
 
-AC_CANONICAL_BUILD
-AC_CANONICAL_SYSTEM
-AC_CANONICAL_TARGET
+#AC_CANONICAL_BUILD
+#AC_CANONICAL_SYSTEM
+#AC_CANONICAL_TARGET
 
 AM_INIT_AUTOMAKE([-Wall -Werror foreign])
 AC_CONFIG_SRCDIR([config.h.in])
 AC_CONFIG_HEADERS([config.h])
-
 
 # Checks for programs.
 AC_PROG_CC
@@ -30,6 +29,10 @@ AC_TYPE_UINT8_T
 # Checks for library functions.
 AC_FUNC_GETGROUPS
 AC_CHECK_FUNCS([strerror])
+
+#AC_ARG_VAR(GPIO_INTERRUPT_AG, [GPIO Number of LSM9DS1 AG Interrupt])
+#AC_DEFINE([GPIO_INTERRUPT_AG], [$1], [GPIO Number for LSM9DS1 AG Interrupt])
+#AC_DEFINE([SPI_CLK_HZ], [1], [SPI Clock Speed for LSM9DS1 SPI Clock])
 
 AC_CONFIG_FILES([Makefile
                  src/Makefile])

@@ -4,71 +4,52 @@
 #include <stdint.h>
 #include <poll.h>
 #include <sys/time.h>
+#include <unistd.h>
+#include <signal.h>
 #include "error.h"
+#include "become_daemon.h"
 #include "options.h"
+#include "gpio.h"
 #include "lsm9ds1.h"
 
-/*
-int
-configure_interrupt(int gpio)
+struct options opts;
+struct LSM9DS1 dev;
+
+static
+void signal_handler(int sig)
 {
-  if(gpio_exists())
-    _exit(77);
-
-  gpio_permissions_valid();
-  gpio_unexport(gpio);
-
-  if(gpio_valid(gpio))
-  {
-    return EXIT_FAILURE;
-  }
-
-  if(gpio_export(gpio))
-  {
-    return EXIT_FAILURE;
-  }
-
-  if(gpio_set_edge(gpio))
-  {
-    return EXIT_FAILURE;
-  }
-
-  return gpio_open_edge(gpio);
+   lsm9ds1_deinit(&dev);
 }
 
 int
-unconfigure_interrupt(int gpio, int fd)
-{
-  gpio_close(fd);
-  return gpio_unexport(gpio);
-}
-*/
-
-int
-get_data(struct LSM9DS1 *dev)
+get_data(struct options *opts, struct LSM9DS1 *dev)
 {
   int timeout;
   struct pollfd pfd;
-  int fd;
+  int fd, fd_data_file;
   int ret;
   char buf[8];
 
+  printf("%d", GPIO_INTERRUPT_AG);
+  return EXIT_SUCCESS;
+
+  if (signal(SIGINT, signal_handler) == SIG_ERR)
+    err_output("installing SIGNT signal handler");
+  if (signal(SIGTERM, signal_handler) == SIG_ERR)
+    err_output("installing SIGTERM signal handler");
+  if (signal(SIGKILL, signal_handler) == SIG_ERR)
+    err_output("installing SIGKILL signal handler");
+
+  fd_data_file = -1;
+  if(opts->data_file != NULL)
+    fd_data_file = fileno(opts->data_file);
+
   timeout = 1000;
 
-  if((fd = open("/sys/class/gpio/gpio13/value", O_RDONLY)) < 0)
-  {
-    fprintf(stderr, "Failed to open gpio\n");
-    return 1;
-  }
-
+  fd = dev->fd_int1_ag_pin;
   pfd.fd = fd;
 
   pfd.events = POLLPRI;
-
-  /*
-  lseek(fd, 0, SEEK_SET);
-  read(fd, buf, sizeof(buf));
-  */
 
   for(int i=0;i<1000;i++)
   {
@@ -91,6 +72,15 @@ get_data(struct LSM9DS1 *dev)
 
     lsm9ds1_ag_read_g(dev);
     lsm9ds1_ag_read_xl(dev);
+
+    if(fd_data_file != -1 && isatty(fd_data_file))
+    {
+      lsm9ds1_ag_write_terminal(dev);
+    }
+    else if(fd_data_file != -1)
+    {
+      lsm9ds1_ag_write_file(dev, opts->data_file, opts->binary);
+    }
   }
 
   close(fd);
@@ -101,24 +91,31 @@ get_data(struct LSM9DS1 *dev)
 int
 main(int argc, char *argv[])
 {
-  struct options opts;
-  struct LSM9DS1 dev;
-  uint8_t status = 0;
-  uint8_t val = 0;
-  int ret;
+  int fd, ret;
 
   options_init(&opts);
   ret = options_parse(&opts, argc, argv);
-  if(ret)
+  if(ret || opts.help)
   {
     usage();
+    return ret;
+  }
+  else if(opts.help)
+  {
+    usage();
+    return EXIT_SUCCESS;
+  }
+
+  if(lsm9ds1_configure_ag_interrupt(opts.gpio_interrupt_ag, &fd))
+  {
+    fprintf(stderr, "unable to configure interrupt %d\n", opts.gpio_interrupt_ag);
     return EXIT_FAILURE;
   }
 
   dev.spidev_ag = "/dev/spidev0.0";
-  dev.spidev_m  = "/dev/spidev0.1";
   dev.spi_clk_hz = opts.spi_clk_hz;
   dev.odr = opts.odr;
+  dev.fd_int1_ag_pin = fd;
 
   lsm9ds1_init(&dev);
 
@@ -133,15 +130,14 @@ main(int argc, char *argv[])
   }
   else if(opts.configure)
   {
-    printf("configuring LSM9DS1\n");
     lsm9ds1_configure(&dev);
     lsm9ds1_test(&dev);
   }
-  else if(opts.calibrate)
+  else if(opts.daemon)
   {
-    printf("setting LSM9DS1 bias\n");
-    lsm9ds1_ag_read_g_bias(&dev);
-    lsm9ds1_ag_read_xl_bias(&dev);
+    if(opts.data_file == stdout)
+      opts.data_file = NULL;
+    become_daemon();
   }
   else if(opts.interrupt_thresh_g)
   {
@@ -154,76 +150,28 @@ main(int argc, char *argv[])
     printf("G INT Thresh: 0x%4x 0x%4x 0x%4x\n", thresh.x, thresh.y, thresh.z);
   }
 
-  lsm9ds1_ag_read(&dev, WHO_AM_I, &val);
-  printf("WHO_AM_I: 0x%02x\n", val);
-
-  lsm9ds1_ag_read(&dev, STATUS_REG, &status);
-  printf("STATUS_REG: 0x%02x\n", status);
-
-  if(status & BOOT_STATUS)
-    printf("Boot running\n");
-  if(status & INACT)
-    printf("interrupts generated\n");
-  if(status & IG_XL)
-    printf("XL Interrupt\n");
-  if(status & IG_G)
-    printf("G  Interrupt\n");
-  if(status & TDA)
-    printf("T  Data Available\n");
-  if(status & GDA)
-    printf("G  Data Available\n");
-  if(status & XLDA)
-    printf("XL Data Available\n");
-
-  lsm9ds1_ag_read(&dev, INT_GEN_SRC_G, &val);
-  printf("INT_GEN_SRC_G: 0x%02x\n", val);
-
-  lsm9ds1_ag_read(&dev, INT_GEN_SRC_XL, &val);
-  printf("INT_GEN_SRC_XL: 0x%02x\n", val);
-
-  lsm9ds1_ag_read(&dev, INT2_CTRL, &val);
-  printf("INT2_CTRL: 0x%02x\n", val);
-
-  lsm9ds1_ag_read(&dev, INT_GEN_SRC_G, &val);
-  printf("INT_GEN_SRC_G: 0x%02x\n", val);
-
-  lsm9ds1_ag_read(&dev, INT_GEN_SRC_XL, &val);
-  printf("INT_GEN_SRC_XL: 0x%02x\n", val);
-
-  /*lsm9ds1_ag_read(&dev, FIFO_CTRL, &val);
-  printf("FIFO_CTRL: 0x%02x\n", val);
-
-  lsm9ds1_ag_read(&dev, FIFO_SRC, &val);
-  printf("FIFO_SRC: 0x%02x\n", val);
-
-  if(val & FTH)
-    printf("FIFO level >= threshold\n");
+  ret = lsm9ds1_test(&dev);
+  if(ret)
+  {
+    fprintf(stderr, "Failed %d test cases\n", ret);
+    return EXIT_FAILURE;
+  }
   else
-    printf("FIFO level < threshold\n");
+  {
+    if(opts.test)
+      return EXIT_SUCCESS;
+  }
 
-  if(val & OVRN)
-    printf("FIFO is full\n");
-  else
-    printf("FIFO not full\n");
+  get_data(&opts, &dev);
 
-  printf("FIFO has %d samples\n", val & FSS);
-  */
-
-  printf("XL_BIAS: %+5d %+5d %+5d\n", dev.bias_xl.x, dev.bias_xl.y, dev.bias_xl.z);
-  printf(" G_BIAS: %+5d %+5d %+5d\n", dev.bias_g.x, dev.bias_g.y, dev.bias_g.z);
-
-  lsm9ds1_ag_read_g(&dev);
-  lsm9ds1_ag_read_xl(&dev);
-  lsm9ds1_ag_read(&dev, STATUS_REG, &status);
-
-  printf("      G: %+5d %+5d %+5d\n", dev.g.x, dev.g.y, dev.g.z);
-  printf("     XL: %+5d %+5d %+5d\n", dev.xl.x, dev.xl.y, dev.xl.z);
-
-  printf("STATUS_REG: 0x%02x\n", status);
-
-  get_data(&dev);
+  if(lsm9ds1_unconfigure_ag_interrupt(opts.gpio_interrupt_ag, dev.fd_int1_ag_pin))
+  {
+    fprintf(stderr, "unable to unconfigure gpio pin %d\n", opts.gpio_interrupt_ag);
+    return EXIT_FAILURE;
+  }
 
   lsm9ds1_deinit(&dev);
 
   return 0;
 }
+
