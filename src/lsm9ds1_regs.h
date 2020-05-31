@@ -55,6 +55,8 @@ enum lsm9ds1_odr
 #define OUT_SEL     0b00000011
 
 #define CTRL_REG3_G 0x12
+#define LP_mode     0b10000000
+#define HP_EN       0b01000000
 
 #define INT_GEN_SRC_G 0x14
 #define IA_G          0b01000000

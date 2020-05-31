@@ -2,6 +2,7 @@
 #define LSM9DS1_H
 
 #include <stdint.h>
+#include <poll.h>
 #include "lsm9ds1_regs.h"
 #include "options.h"
 #include "spi.h"
@@ -28,20 +29,17 @@ struct LSM9DS1
   int odr;
 
   int int1_ag_pin;
-  int int2_ag_pin;
-
   int fd_int1_ag_pin;
-  int fd_int2_ag_pin;
 
-  struct point g;
   struct point xl;
+  struct point g;
 };
 
 int
 lsm9ds1_init(struct LSM9DS1* lsm9ds1);
 
 int
-lsm9ds1_deinit(struct LSM9DS1* lsm9ds1);
+lsm9ds1_deinit(struct LSM9DS1* lsm9ds1, struct options *opts);
 
 int
 lsm9ds1_reset(struct LSM9DS1* lsm9ds1);
@@ -80,9 +78,6 @@ int
 lsm9ds1_ag_read_g(struct LSM9DS1* lsm9ds1);
 
 int
-lsm9ds1_ag_write_int_g_thresh(struct LSM9DS1* lsm9ds1, struct point *xyz, int dcrm, int wait, uint8_t dur);
-
-int
 lsm9ds1_ag_write(struct LSM9DS1* lsm9ds1, uint8_t reg, uint8_t data);
 
 int
@@ -93,5 +88,8 @@ lsm9ds1_ag_write_terminal(struct LSM9DS1* dev);
 
 void
 lsm9ds1_ag_write_file(struct LSM9DS1* dev, FILE* file, int binary);
+
+int
+lsm9ds1_ag_poll(struct LSM9DS1 *dev, struct options *opts);
 
 #endif

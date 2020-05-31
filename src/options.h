@@ -27,6 +27,7 @@ struct options
   int odr;
   int daemon;
   int gpio_interrupt_ag;
+  int spi_dev;
   int interrupt_thresh_g;
   FILE* data_file;
   int fd_socket_udp;

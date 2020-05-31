@@ -7,7 +7,8 @@ uint8_t LSM9DS1_INIT0[][2] =
   { CTRL_REG8,      BDU | IF_ADD_INC },
   { CTRL_REG9,      I2C_DISABLE },
   { CTRL_REG4,      0b00111011 },
-  { CTRL_REG1_G,    0b10000001 }, // G Angular rate sensor control
+  { CTRL_REG1_G,    0b10000000 }, // G Angular rate sensor control
+  { CTRL_REG3_G,    HP_EN      },
   { CTRL_REG5_XL,   0b00111000 },
   { CTRL_REG6_XL,   0b10000111 }, // XL
 //  { INT_GEN_CFG_XL, 0b01111111 }, // 6 Direction detection, ALL Interrupts
@@ -34,6 +35,15 @@ lsm9ds1_init(struct LSM9DS1* lsm9ds1)
     err_output("lsm9ds1_init: opening %s", lsm9ds1->spidev_ag);
     return ret;
   }
+  return ret;
+}
+
+int
+lsm9ds1_deinit(struct LSM9DS1* lsm9ds1, struct options *opts)
+{
+  int ret;
+  ret  = lsm9ds1_unconfigure_ag_interrupt(opts->gpio_interrupt_ag, lsm9ds1->fd_int1_ag_pin);
+  ret |= spi_destroy(&lsm9ds1->spi_ag);
   return ret;
 }
 
@@ -69,7 +79,7 @@ lsm9ds1_test(struct LSM9DS1* lsm9ds1)
   lsm9ds1_ag_read(lsm9ds1, WHO_AM_I, &val);
   if(val != WHO_AM_I_VAL)
   {
-    fprintf(stderr, "WHO_AM_I register not %d and is %d\n", WHO_AM_I_VAL, val);
+    fprintf(stderr, "WHO_AM_I register value 0x%02x not 0x%02x\n", val, WHO_AM_I_VAL);
     ret++;
   }
 
@@ -82,7 +92,7 @@ lsm9ds1_test(struct LSM9DS1* lsm9ds1)
   // chack value
   if(val != 0xab)
   {
-    fprintf(stderr, "Unable to write a register and read back the result\n");
+    fprintf(stderr, "Wrote register REFERENCE_G with 0x%02x and read back 0x%02x\n", 0xab, val);
     ret++;
   }
   // write original value back
@@ -205,19 +215,12 @@ lsm9ds1_unconfigure_ag_interrupt(int gpio, int fd)
 }
 
 int
-lsm9ds1_deinit(struct LSM9DS1* lsm9ds1)
-{
-  int ret;
-  ret = spi_destroy(&lsm9ds1->spi_ag);
-  return ret;
-}
-
-int
 lsm9ds1_ag_read(struct LSM9DS1* lsm9ds1, uint8_t reg, uint8_t *data)
 {
   int ret;
   uint8_t tx[2], rx[2];
   tx[0] = 0x80 | reg;
+  tx[1] = 0;
   ret = spi_transfer(&lsm9ds1->spi_ag, tx, rx, 2);
   *data = rx[1];
   if(ret)
@@ -231,6 +234,7 @@ lsm9ds1_ag_read2(struct LSM9DS1* lsm9ds1, uint8_t reg, int16_t *data)
   int ret;
   uint8_t tx[3], rx[3];
   tx[0] = 0x80 | reg;
+  tx[1] = 0; tx[2] = 0;
   ret = spi_transfer(&lsm9ds1->spi_ag, tx, rx, 3);
   *data = rx[1] + (rx[2] << 8);
   if(ret)
@@ -318,6 +322,7 @@ lsm9ds1_ag_read_xyz(struct LSM9DS1* lsm9ds1, uint8_t reg, struct point *xyz)
   int ret;
   uint8_t tx[7], rx[7];
   tx[0] = 0x80 | reg;
+  for(int i=1; i<7; i++) tx[i] = 0;
   ret = spi_transfer(&lsm9ds1->spi_ag, tx, rx, 7);
   xyz->x = rx[1] + (rx[2] << 8);
   xyz->y = rx[3] + (rx[4] << 8);
@@ -394,31 +399,6 @@ lsm9ds1_ag_read_g(struct LSM9DS1* lsm9ds1)
 }
 
 int
-lsm9ds1_ag_write_int_g_thresh(struct LSM9DS1* lsm9ds1, struct point *xyz, int dcrm, int wait, uint8_t dur)
-{
-  int ret;
-
-  if(dcrm)
-    xyz->x |= DCRM_G;
-  else
-    xyz->x &= 0x7fff;
-
-  ret  = lsm9ds1_ag_write2(lsm9ds1, INT_GEN_THS_X_G, xyz->x);
-  ret |= lsm9ds1_ag_write2(lsm9ds1, INT_GEN_THS_Y_G, xyz->y & 0x7fff);
-  ret |= lsm9ds1_ag_write2(lsm9ds1, INT_GEN_THS_Z_G, xyz->z & 0x7fff);
-
-  if(wait)
-    dur |= WAIT_G;
-  ret |= lsm9ds1_ag_write(lsm9ds1, INT_GEN_DUR_G, dur);
-
-  ret |= lsm9ds1_ag_read2(lsm9ds1, INT_GEN_THS_X_G, &xyz->x);
-  ret |= lsm9ds1_ag_read2(lsm9ds1, INT_GEN_THS_Y_G, &xyz->y);
-  ret |= lsm9ds1_ag_read2(lsm9ds1, INT_GEN_THS_Z_G, &xyz->z);
-
-  return ret;
-}
-
-int
 lsm9ds1_ag_write(struct LSM9DS1* lsm9ds1, uint8_t reg, uint8_t data)
 {
   int ret;
@@ -463,7 +443,65 @@ lsm9ds1_ag_write_file(struct LSM9DS1* dev, FILE* file, int binary)
   }
   else
   {
-    const char* format = "%6d,%6d,%6d,%6d,%6d,%6d\n";
+    const char* format = "%d,%d,%d,%d,%d,%d\n";
     fprintf(file, format, dev->g.x, dev->g.y, dev->g.z, dev->xl.x, dev->xl.y, dev->xl.z);
   }
+}
+
+int
+lsm9ds1_ag_poll(struct LSM9DS1 *dev, struct options *opts)
+{
+  int timeout;
+  struct pollfd pfd;
+  int fd, fd_data_file;
+  int ret;
+  char buf[8];
+
+  fd_data_file = -1;
+  if(opts->data_file != NULL)
+    fd_data_file = fileno(opts->data_file);
+
+  timeout = 1000;
+
+  fd = dev->fd_int1_ag_pin;
+  pfd.fd = fd;
+
+  pfd.events = POLLPRI;
+
+  //while(1)
+  for(int i=0; i<30000; i++)
+  {
+    ret = poll(&pfd, 1, timeout);
+    if(ret == 0)
+    {
+      fprintf(stderr, "poll timed out\n");
+      break;
+    }
+    else if (ret < 0)
+    {
+      err_output("poll");
+      break;
+    }
+
+    lseek(fd, 0, SEEK_SET);
+    read(fd, buf, sizeof(buf));
+
+    pfd.fd = fd;
+
+    lsm9ds1_ag_read_xl(dev);
+    lsm9ds1_ag_read_g(dev);
+
+    if(fd_data_file != -1 && isatty(fd_data_file))
+    {
+      lsm9ds1_ag_write_terminal(dev);
+    }
+    else if(fd_data_file != -1)
+    {
+      lsm9ds1_ag_write_file(dev, opts->data_file, opts->binary);
+    }
+  }
+
+  close(fd);
+
+  return 0;
 }
