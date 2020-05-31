@@ -92,8 +92,10 @@ main(int argc, char *argv[])
   {
     // skip test since we did it above
     if(opts.test)
+    {
       ret = EXIT_SUCCESS;
-    goto cleanup;
+      goto cleanup;
+    }
   }
 
   lsm9ds1_ag_poll(&dev, &opts);

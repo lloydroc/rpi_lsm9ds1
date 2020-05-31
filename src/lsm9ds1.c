@@ -438,13 +438,14 @@ lsm9ds1_ag_write_file(struct LSM9DS1* dev, FILE* file, int binary)
 {
   if(binary)
   {
+    fwrite(&dev->tv, sizeof(struct timeval), 1, file);
     fwrite(&dev->g,  sizeof(int16_t), 3, file);
     fwrite(&dev->xl, sizeof(int16_t), 3, file);
   }
   else
   {
-    const char* format = "%d,%d,%d,%d,%d,%d\n";
-    fprintf(file, format, dev->g.x, dev->g.y, dev->g.z, dev->xl.x, dev->xl.y, dev->xl.z);
+    const char* format = "%ld.%06ld,%d,%d,%d,%d,%d,%d\n";
+    fprintf(file, format, dev->tv.tv_sec, dev->tv.tv_usec, dev->g.x, dev->g.y, dev->g.z, dev->xl.x, dev->xl.y, dev->xl.z);
   }
 }
 
@@ -468,8 +469,7 @@ lsm9ds1_ag_poll(struct LSM9DS1 *dev, struct options *opts)
 
   pfd.events = POLLPRI;
 
-  //while(1)
-  for(int i=0; i<30000; i++)
+  while(1)
   {
     ret = poll(&pfd, 1, timeout);
     if(ret == 0)
@@ -490,6 +490,8 @@ lsm9ds1_ag_poll(struct LSM9DS1 *dev, struct options *opts)
 
     lsm9ds1_ag_read_xl(dev);
     lsm9ds1_ag_read_g(dev);
+
+    gettimeofday(&dev->tv, NULL);
 
     if(fd_data_file != -1 && isatty(fd_data_file))
     {

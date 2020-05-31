@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <poll.h>
+#include <sys/time.h>
 #include "lsm9ds1_regs.h"
 #include "options.h"
 #include "spi.h"
@@ -33,6 +34,8 @@ struct LSM9DS1
 
   struct point xl;
   struct point g;
+
+  struct timeval tv;
 };
 
 int
