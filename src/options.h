@@ -6,6 +6,11 @@
 #include <string.h>
 #include <getopt.h>
 #include <unistd.h>
+#include <sys/types.h>
+#include <arpa/inet.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netdb.h>
 #include "error.h"
 #include "lsm9ds1_regs.h"
 
@@ -31,6 +36,7 @@ struct options
   int interrupt_thresh_g;
   FILE* data_file;
   int fd_socket_udp;
+  struct sockaddr_in socket_udp_dest;
   int binary;
 };
 

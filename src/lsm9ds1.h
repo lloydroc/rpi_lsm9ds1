@@ -32,10 +32,18 @@ struct LSM9DS1
   int int1_ag_pin;
   int fd_int1_ag_pin;
 
-  struct point xl;
   struct point g;
+  struct point xl;
 
   struct timeval tv;
+};
+
+struct LSM9DS1_udp_datagram
+{
+  uint32_t secs;
+  uint32_t usecs;
+  int16_t g_x, g_y, g_z;
+  int16_t xl_x, xl_y, xl_z;
 };
 
 int

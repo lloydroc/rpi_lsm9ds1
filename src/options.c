@@ -4,15 +4,17 @@ void
 usage(void)
 {
   printf("Usage: lsm9ds1 [OPTIONS]\n\n");
+  printf("A command line tool to read data from the ST LSM9DS1.\n");
+  printf("After wiring up the lsm9ds1 you MUST run a configuration on it first.\n\n");
   printf("OPTIONS:\n\
 -h --help                     Print help\n\
 -x --reset                    SW Reset\n\
 -t --test                     Perform a test\n\
--z --spi-clk-hz SPEED         Speed of SPI Clock\n\
--s --spi-device SPI           Device\n\
--g --rpi-gpio-interrupt GPIO  Interrupt Pin\n\
+-z --spi-clk-hz SPEED         Speed of SPI Clock. Default 8000000 Hz\n\
+-s --spi-device SPI           Device. Default 0.\n\
+-g --rpi-gpio-interrupt GPIO  Interrupt Pin. Default 13.\n\
 -c --configure                Write Configuration\n\
--r --odr ODR                  G and XL Sample Frequency in Hz: 14.9, 59.5, 119, 238, 476, 952\n\
+-r --odr ODR                  G and XL Sample Frequency in Hz: 14.9, 59.5, 119, 238, 476, 952. Default 14.9 Hz.\n\
 -d --daemon                   Run as a Deamon\n\
 -f --file FILENAME            Output data to a File\n\
 -u --socket-udp HOST:PORT     Output data to a UDP Socket\n\
@@ -34,6 +36,7 @@ options_init(struct options *opts)
   opts->odr = 1;
   opts->daemon = 0;
   opts->data_file = stdout;
+  opts->fd_socket_udp = -1;
 }
 
 static int
@@ -70,9 +73,66 @@ options_open_file_data(char *optarg)
 
 static
 int
-options_open_socket_udp(char* optarg)
+options_open_socket_udp(struct options *opts, char *optarg)
 {
-  return -1;
+  struct hostent *he;
+  int sockfd, rc, optval;
+
+  int prt;
+  size_t len;
+  char *index;
+  char host[1024];
+  char port[6];
+
+  // separate the host and port by the :
+
+  len = strnlen(optarg, 1024);
+  if(len < 3 || len == 1024)
+    return 1;
+
+  index = rindex(optarg, ':');
+  if(index == NULL)
+    return 1;
+
+  strncpy(port, index+1, 6);
+  len = strnlen(port, 6);
+  if(len < 1 || len == 6)
+    return 1;
+
+  prt = atoi(port);
+  *index = '\0';
+
+  strncpy(host, optarg, 1024);
+  len = strnlen(host, 1024);
+  if(len == 0 || len == 1024)
+    return 1;
+
+  if ( (he = gethostbyname(host) ) == NULL ) {
+      err_output("gethostbyname");
+      return 1;
+  }
+
+  bzero(&opts->socket_udp_dest, sizeof(struct sockaddr_in));
+  memcpy(&opts->socket_udp_dest.sin_addr, he->h_addr_list[0], he->h_length);
+  opts->socket_udp_dest.sin_family = AF_INET;
+  opts->socket_udp_dest.sin_port = htons(prt);
+
+  sockfd = socket(opts->socket_udp_dest.sin_family, SOCK_DGRAM, 0);
+  if(sockfd == -1)
+  {
+    err_output("socket");
+  }
+
+  rc = setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval));
+  if(rc)
+  {
+    err_output("setsockopt");
+    return 1;
+  }
+
+  opts->fd_socket_udp = sockfd;
+
+  return 0;
 }
 
 int
@@ -141,10 +201,7 @@ options_parse(struct options *opts, int argc, char *argv[])
         ret |= opts->data_file == NULL;
       }
       else if(strcmp("socket-udp", long_options[option_index].name) == 0)
-      {
-        opts->fd_socket_udp = options_open_socket_udp(optarg);
-        ret |= opts->fd_socket_udp == -1;
-      }
+        ret |= options_open_socket_udp(opts, optarg);
       else if(strcmp("binary", long_options[option_index].name) == 0)
         opts->binary = 1;
       else if(strcmp("daemon", long_options[option_index].name) == 0)
@@ -180,8 +237,7 @@ options_parse(struct options *opts, int argc, char *argv[])
         ret |= opts->data_file == NULL;
         break;
       case 'u':
-        opts->fd_socket_udp = options_open_socket_udp(optarg);
-        ret |= opts->fd_socket_udp == -1;
+        ret |= options_open_socket_udp(opts, optarg);
         break;
       case 'b':
         opts->binary = 1;

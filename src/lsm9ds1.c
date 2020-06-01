@@ -44,6 +44,10 @@ lsm9ds1_deinit(struct LSM9DS1* lsm9ds1, struct options *opts)
   int ret;
   ret  = lsm9ds1_unconfigure_ag_interrupt(opts->gpio_interrupt_ag, lsm9ds1->fd_int1_ag_pin);
   ret |= spi_destroy(&lsm9ds1->spi_ag);
+  if(opts->data_file != NULL)
+    ret |= fclose(opts->data_file);
+  if(opts->fd_socket_udp != -1)
+    ret |= close(opts->fd_socket_udp);
   return ret;
 }
 
@@ -97,6 +101,13 @@ lsm9ds1_test(struct LSM9DS1* lsm9ds1)
   }
   // write original value back
   lsm9ds1_ag_write(lsm9ds1, REFERENCE_G, val2);
+
+  lsm9ds1_ag_read(lsm9ds1, INT_GEN_CFG_G, &val);
+  if(val != LIR_G)
+  {
+    fprintf(stderr, "Interrupts not configured. Has the LSM9DS1 been configured?\n");
+    ret++;
+  }
 
   /* would be nice if the datasheet documented what this does
    * and how to read the result
@@ -449,6 +460,29 @@ lsm9ds1_ag_write_file(struct LSM9DS1* dev, FILE* file, int binary)
   }
 }
 
+static
+int
+lsm9ds1_ag_write_socket_udp(struct LSM9DS1 *dev, struct options *opts)
+{
+  ssize_t buffrx;
+  struct LSM9DS1_udp_datagram datagram;
+  socklen_t servsock_len;
+  servsock_len = sizeof(opts->socket_udp_dest);
+
+  datagram.secs = htonl(dev->tv.tv_sec);
+  datagram.usecs = htonl(dev->tv.tv_usec);
+  datagram.g_x = htons(dev->g.x);
+  datagram.g_y = htons(dev->g.y);
+  datagram.g_z = htons(dev->g.z);
+  datagram.xl_x = htons(dev->xl.x);
+  datagram.xl_y = htons(dev->xl.y);
+  datagram.xl_z = htons(dev->xl.z);
+
+  buffrx = sendto(opts->fd_socket_udp, &datagram, sizeof(datagram), 0, (struct sockaddr *)&opts->socket_udp_dest, servsock_len);
+
+  return buffrx == sizeof(struct LSM9DS1_udp_datagram);
+}
+
 int
 lsm9ds1_ag_poll(struct LSM9DS1 *dev, struct options *opts)
 {
@@ -462,11 +496,12 @@ lsm9ds1_ag_poll(struct LSM9DS1 *dev, struct options *opts)
   if(opts->data_file != NULL)
     fd_data_file = fileno(opts->data_file);
 
-  timeout = 1000;
+  // we will wait forever
+  timeout = -1;
 
   fd = dev->fd_int1_ag_pin;
-  pfd.fd = fd;
 
+  pfd.fd = fd;
   pfd.events = POLLPRI;
 
   while(1)
@@ -500,6 +535,10 @@ lsm9ds1_ag_poll(struct LSM9DS1 *dev, struct options *opts)
     else if(fd_data_file != -1)
     {
       lsm9ds1_ag_write_file(dev, opts->data_file, opts->binary);
+    }
+    if(opts->fd_socket_udp != -1)
+    {
+      lsm9ds1_ag_write_socket_udp(dev, opts);
     }
   }
 

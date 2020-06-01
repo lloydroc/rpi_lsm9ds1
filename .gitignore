@@ -48,3 +48,4 @@ src/Makefile
 src/.deps
 config.h
 tags
+lsm9ds1

@@ -1,9 +1,5 @@
 AC_INIT([rpi_lsm9ds1], [1.0], [lloyd@lloydrochester.com])
 
-#AC_CANONICAL_BUILD
-#AC_CANONICAL_SYSTEM
-#AC_CANONICAL_TARGET
-
 AM_INIT_AUTOMAKE([-Wall -Werror foreign])
 AC_CONFIG_SRCDIR([config.h.in])
 AC_CONFIG_HEADERS([config.h])
@@ -15,24 +11,23 @@ AC_PROG_INSTALL
 # Checks for libraries.
 
 # Checks for header files.
-AC_CHECK_HEADERS([fcntl.h stdint.h stdlib.h string.h sys/ioctl.h sys/time.h unistd.h])
+AC_CHECK_HEADERS([arpa/inet.h fcntl.h netdb.h netinet/in.h stdint.h stdlib.h string.h sys/ioctl.h sys/socket.h sys/time.h unistd.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_CHECK_HEADER_STDBOOL
 AC_TYPE_UID_T
 AC_TYPE_INT16_T
-AC_TYPE_INT32_T
 AC_TYPE_INT8_T
 AC_TYPE_SIZE_T
+AC_TYPE_SSIZE_T
+AC_TYPE_UINT32_T
 AC_TYPE_UINT8_T
 
 # Checks for library functions.
+AC_FUNC_FORK
 AC_FUNC_GETGROUPS
-AC_CHECK_FUNCS([strerror])
-
-#AC_ARG_VAR(GPIO_INTERRUPT_AG, [GPIO Number of LSM9DS1 AG Interrupt])
-#AC_DEFINE([GPIO_INTERRUPT_AG], [$1], [GPIO Number for LSM9DS1 AG Interrupt])
-#AC_DEFINE([SPI_CLK_HZ], [1], [SPI Clock Speed for LSM9DS1 SPI Clock])
+AC_FUNC_STRNLEN
+AC_CHECK_FUNCS([bzero dup2 gethostbyname gettimeofday socket strerror strstr])
 
 AC_CONFIG_FILES([Makefile
                  src/Makefile])
