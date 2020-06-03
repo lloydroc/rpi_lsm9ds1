@@ -15,7 +15,7 @@ usage(void)
 -g --rpi-gpio-interrupt GPIO  Interrupt Pin. Default 13.\n\
 -c --configure                Write Configuration\n\
 -r --odr ODR                  G and XL Sample Frequency in Hz: 14.9, 59.5, 119, 238, 476, 952. Default 14.9 Hz.\n\
--d --daemon                   Run as a Deamon\n\
+-d --daemon                   Run as a Daemon\n\
 -f --file FILENAME            Output data to a File\n\
 -u --socket-udp HOST:PORT     Output data to a UDP Socket\n\
 -b --binary                   Used with the -f and -u options for binary output\n\

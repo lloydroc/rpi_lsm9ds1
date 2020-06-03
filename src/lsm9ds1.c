@@ -3,23 +3,16 @@
 /* Interrupt driven for XL and G */
 uint8_t LSM9DS1_INIT0[][2] =
 {
-//  { CTRL_REG8,      BDU | H_LACTIVE | IF_ADD_INC },
   { CTRL_REG8,      BDU | IF_ADD_INC },
-  { CTRL_REG9,      I2C_DISABLE },
-  { CTRL_REG4,      0b00111011 },
-  { CTRL_REG1_G,    0b10000000 }, // G Angular rate sensor control
-  { CTRL_REG3_G,    HP_EN      },
-  { CTRL_REG5_XL,   0b00111000 },
-  { CTRL_REG6_XL,   0b10000111 }, // XL
-//  { INT_GEN_CFG_XL, 0b01111111 }, // 6 Direction detection, ALL Interrupts
-//  { INT_GEN_CFG_G,  ZHIE_G },
-  { INT_GEN_CFG_G,  LIR_G },
-//  { INT1_CTRL,      INT1_IG_G | INT1_IG_XL | INT_DRDY_G | INT_DRDY_XL },
-  { INT1_CTRL,        INT_DRDY_G },
-//  { INT1_CTRL,        INT1_IG_G },
-//  { INT1_CTRL,      INT1_IG_G |  INT_DRDY_G },
-//  { INT2_CTRL,      INT2_INACT }, // Interruprt on INT2_A/G Pin when G Data Ready
-  { FIFO_CTRL,      0b00000000 }, // FIFO OFF
+  { CTRL_REG9,      I2C_DISABLE      },
+  { CTRL_REG4,      0b00111011       },
+  { CTRL_REG1_G,    0b10000000       },
+  { CTRL_REG3_G,    HP_EN            },
+  { CTRL_REG5_XL,   0b00111000       },
+  { CTRL_REG6_XL,   0b10000111       },
+  { INT_GEN_CFG_G,  LIR_G            },
+  { INT1_CTRL,      INT_DRDY_G       },
+  { FIFO_CTRL,      0b00000000       },
 };
 
 size_t LSM9DS1_INIT0_SIZE = sizeof(LSM9DS1_INIT0);
@@ -257,74 +250,6 @@ int
 lsm9ds1_ag_read_status(struct LSM9DS1* lsm9ds1, uint8_t *status)
 {
   return lsm9ds1_ag_read(lsm9ds1, STATUS_REG, status);
-}
-
-int
-lsm9ds1_ag_print_status(struct LSM9DS1* lsm9ds1)
-{
-  // TODO
-  uint8_t status, val;
-  lsm9ds1_ag_read(lsm9ds1, STATUS_REG, &status);
-  printf("STATUS_REG: 0x%02x\n", status);
-
-  if(status & BOOT_STATUS)
-    printf("Boot running\n");
-  if(status & INACT)
-    printf("interrupts generated\n");
-  if(status & IG_XL)
-    printf("XL Interrupt\n");
-  if(status & IG_G)
-    printf("G  Interrupt\n");
-  if(status & TDA)
-    printf("T  Data Available\n");
-  if(status & GDA)
-    printf("G  Data Available\n");
-  if(status & XLDA)
-    printf("XL Data Available\n");
-
-  lsm9ds1_ag_read(lsm9ds1, INT_GEN_SRC_G, &val);
-  printf("INT_GEN_SRC_G: 0x%02x\n", val);
-
-  lsm9ds1_ag_read(lsm9ds1, INT_GEN_SRC_XL, &val);
-  printf("INT_GEN_SRC_XL: 0x%02x\n", val);
-
-  lsm9ds1_ag_read(lsm9ds1, INT2_CTRL, &val);
-  printf("INT2_CTRL: 0x%02x\n", val);
-
-  lsm9ds1_ag_read(lsm9ds1, INT_GEN_SRC_G, &val);
-  printf("INT_GEN_SRC_G: 0x%02x\n", val);
-
-  lsm9ds1_ag_read(lsm9ds1, INT_GEN_SRC_XL, &val);
-  printf("INT_GEN_SRC_XL: 0x%02x\n", val);
-
-  /*lsm9ds1_ag_read(lsm9ds1, FIFO_CTRL, &val);
-  printf("FIFO_CTRL: 0x%02x\n", val);
-
-  lsm9ds1_ag_read(lsm9ds1, FIFO_SRC, &val);
-  printf("FIFO_SRC: 0x%02x\n", val);
-
-  if(val & FTH)
-    printf("FIFO level >= threshold\n");
-  else
-    printf("FIFO level < threshold\n");
-
-  if(val & OVRN)
-    printf("FIFO is full\n");
-  else
-    printf("FIFO not full\n");
-
-  printf("FIFO has %d samples\n", val & FSS);
-  */
-
-  lsm9ds1_ag_read_g(lsm9ds1);
-  lsm9ds1_ag_read_xl(lsm9ds1);
-  lsm9ds1_ag_read(lsm9ds1, STATUS_REG, &status);
-
-  printf("      G: %+5d %+5d %+5d\n", lsm9ds1->g.x, lsm9ds1->g.y, lsm9ds1->g.z);
-  printf("     XL: %+5d %+5d %+5d\n", lsm9ds1->xl.x, lsm9ds1->xl.y, lsm9ds1->xl.z);
-
-  printf("STATUS_REG: 0x%02x\n", status);
-  return 0;
 }
 
 int
