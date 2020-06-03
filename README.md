@@ -46,7 +46,7 @@ $ lsm9ds1 # see the readings, type CTRL-C to stop
 
 # Downloading
 
-Download the distribution tar-ball.
+Download the distribution tarball. The source code in this repo should be used if you want to develop code on it. See the Contributing section below for changing the source code.
 
 ```
 wget https://lloydrochester.com/code/rpi_lsm9ds1-1.0.tar.gz
@@ -58,11 +58,23 @@ cd rpi_lsm9ds1
 
 We have the typical Autotools installation flow. We will compile the code from source and install it on the system.
 
+Firstly, if we're running as non-root the user running the program will need access to SPI and GPIO. Use `raspi-config` to enable SPI. Then add the user to the following groups:
+
+```
+$ usermod -a -G gpio spi pi # assumes the pi user
+```
+
+Note, this command will not take effect until the user logs in and out again. You can verify using the `groups` command.
+
+After downloading the tarball and extracting - assuming you're in the `rpi_lsm9ds1` folder:
+
 ```
 $ ./configure
 $ make
 $ sudo make install
 ```
+
+The `sudo make install` will install it for all users. They would need to be part of the `spi` and `gpio` groups to run the `lsm9ds1` binary as well. This step can be skipped an you can just run the `./src/lsm9ds1` binary directly.
 
 # Uninstalling
 
@@ -125,4 +137,21 @@ When we specify the `-d` option `lsm9ds1` will detach from the terminal and beco
 
 # Contributing
 
-Contributing is highly encouraged. Would like to add more configuration options, and other ways to use the tool.
+Contributing is highly encouraged. Would like to add more configuration options, and other ways to use the tool. Any feedback would be much appreciated. Please file issues or PRs on Github.
+
+First install the GNU autotools:
+
+```
+$ sudo apt-get install -y autotools-dev autoconf
+```
+
+Then clone the project, `cd` into the directory and run the following:
+
+```
+$ ./autogen.sh
+$ ./configure
+$ make
+$ ./src/lsm9ds1 -h
+```
+
+The `./configure` script will create the makefiles.
