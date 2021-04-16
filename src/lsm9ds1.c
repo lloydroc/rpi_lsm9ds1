@@ -202,7 +202,7 @@ lsm9ds1_configure_ag_interrupt(int gpio, int *fd)
     }
   }
 
-  *fd = gpio_open(gpio, 0);
+  *fd = gpio_open(gpio, 1);
   if(*fd == -1)
   {
     fprintf(stderr, "Unable to open gpio %d for reading\n", gpio);
@@ -443,10 +443,10 @@ lsm9ds1_ag_poll(struct LSM9DS1 *dev, struct options *opts)
       break;
     }
 
-    lseek(fd, 0, SEEK_SET);
-    read(fd, buf, sizeof(buf));
-
-    pfd.fd = fd;
+    if(lseek(fd, 0, SEEK_SET) == -1)
+      perror("lseek");
+    if(read(fd, buf, sizeof(buf)) == -1)
+      perror("read");
 
     lsm9ds1_ag_read_xl(dev);
     lsm9ds1_ag_read_g(dev);
