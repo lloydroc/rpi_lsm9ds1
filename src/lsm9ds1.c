@@ -416,11 +416,14 @@ lsm9ds1_ag_poll(struct LSM9DS1 *dev, struct options *opts)
   int fd, fd_data_file;
   int ret;
   char buf[8];
-
+  int tty;
+  
   fd_data_file = -1;
   if(opts->data_file != NULL)
     fd_data_file = fileno(opts->data_file);
 
+  tty = isatty(fd_data_file);
+  
   // we will wait forever
   timeout = -1;
 
@@ -443,6 +446,7 @@ lsm9ds1_ag_poll(struct LSM9DS1 *dev, struct options *opts)
       break;
     }
 
+
     if(lseek(fd, 0, SEEK_SET) == -1)
       perror("lseek");
     if(read(fd, buf, sizeof(buf)) == -1)
@@ -453,7 +457,7 @@ lsm9ds1_ag_poll(struct LSM9DS1 *dev, struct options *opts)
 
     gettimeofday(&dev->tv, NULL);
 
-    if(fd_data_file != -1 && isatty(fd_data_file))
+    if(fd_data_file != -1 && tty)
     {
       lsm9ds1_ag_write_terminal(dev);
     }

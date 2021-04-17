@@ -33,7 +33,7 @@ options_init(struct options *opts)
   opts->configure = 0;
   opts->gpio_interrupt_ag = GPIO_INTERRUPT_AG;
   opts->interrupt_thresh_g = 0;
-  opts->odr = 1;
+  opts->odr = ODR_14p9_HZ;
   opts->daemon = 0;
   opts->data_file = stdout;
   opts->fd_socket_udp = -1;
