@@ -3,15 +3,25 @@
 /* Interrupt driven for XL and G */
 uint8_t LSM9DS1_INIT0[][2] =
 {
+  /* Block Data Update, Register address automatic increment on SPI */
   { CTRL_REG8,      BDU | IF_ADD_INC },
+  /* Disable I2C */
   { CTRL_REG9,      I2C_DISABLE      },
+  /* Enable G.Z, G.Y, G.Z, XL Latched Interrupt 4D option */
   { CTRL_REG4,      0b00111011       },
+  /* Angular Rate Sensor Control Reg 1: Gyroscope ODR 238Hz TODO */
   { CTRL_REG1_G,    0b10000000       },
+  /* Angular Rate Sensor Control Reg 3: Enable Highpass Filter */ 
   { CTRL_REG3_G,    HP_EN            },
+  /* Linear Acceleration Sensor Control Reg: Enable Z,Y,X */
   { CTRL_REG5_XL,   0b00111000       },
+  /* Linear Acceleration Sensor Control Reg: Odr 238 Hz, BW selected TODO */
   { CTRL_REG6_XL,   0b10000111       },
+  /* Latch Gyroscope Interrupt Request */
   { INT_GEN_CFG_G,  LIR_G            },
+  /* INT1_A/G pin control register: Interrupt on Gyroscope Data Ready */
   { INT1_CTRL,      INT_DRDY_G       },
+  /* Turn off FIFO */
   { FIFO_CTRL,      0b00000000       },
 };
 
