@@ -11,7 +11,7 @@ uint8_t LSM9DS1_INIT0[][2] =
   { CTRL_REG4,      0b00111011       },
   /* Angular Rate Sensor Control Reg 1: Gyroscope ODR 238Hz TODO */
   { CTRL_REG1_G,    0b10000000       },
-  /* Angular Rate Sensor Control Reg 3: Enable Highpass Filter */ 
+  /* Angular Rate Sensor Control Reg 3: Enable Highpass Filter */
   { CTRL_REG3_G,    HP_EN            },
   /* Linear Acceleration Sensor Control Reg: Enable Z,Y,X */
   { CTRL_REG5_XL,   0b00111000       },
@@ -243,20 +243,6 @@ lsm9ds1_ag_read(struct LSM9DS1* lsm9ds1, uint8_t reg, uint8_t *data)
 }
 
 int
-lsm9ds1_ag_read2(struct LSM9DS1* lsm9ds1, uint8_t reg, int16_t *data)
-{
-  int ret;
-  uint8_t tx[3], rx[3];
-  tx[0] = 0x80 | reg;
-  tx[1] = 0; tx[2] = 0;
-  ret = spi_transfer(&lsm9ds1->spi_ag, tx, rx, 3);
-  *data = rx[1] + (rx[2] << 8);
-  if(ret)
-    err_output("lsm9ds1_ag_data");
-  return ret;
-}
-
-int
 lsm9ds1_ag_read_status(struct LSM9DS1* lsm9ds1, uint8_t *status)
 {
   return lsm9ds1_ag_read(lsm9ds1, STATUS_REG, status);
@@ -357,20 +343,6 @@ lsm9ds1_ag_write(struct LSM9DS1* lsm9ds1, uint8_t reg, uint8_t data)
   return ret;
 }
 
-int
-lsm9ds1_ag_write2(struct LSM9DS1* lsm9ds1, uint8_t reg, int16_t data)
-{
-  int ret;
-  uint8_t tx[3], rx[3];
-  tx[0] = 0x7F & reg;
-  tx[1] = (int8_t) (data >> 8);
-  tx[2] = (int8_t) data;
-  ret = spi_transfer(&lsm9ds1->spi_ag, tx, rx, 3);
-  if(ret)
-    err_output("lsm9ds1_ag_data");
-  return ret;
-}
-
 void
 lsm9ds1_ag_write_terminal(struct LSM9DS1* dev)
 {
@@ -427,13 +399,13 @@ lsm9ds1_ag_poll(struct LSM9DS1 *dev, struct options *opts)
   int ret;
   char buf[8];
   int tty;
-  
+
   fd_data_file = -1;
   if(opts->data_file != NULL)
     fd_data_file = fileno(opts->data_file);
 
   tty = isatty(fd_data_file);
-  
+
   // we will wait forever
   timeout = -1;
 

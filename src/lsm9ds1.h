@@ -88,9 +88,6 @@ lsm9ds1_ag_read_g(struct LSM9DS1* lsm9ds1);
 int
 lsm9ds1_ag_write(struct LSM9DS1* lsm9ds1, uint8_t reg, uint8_t data);
 
-int
-lsm9ds1_ag_write2(struct LSM9DS1* lsm9ds1, uint8_t reg, int16_t data);
-
 void
 lsm9ds1_ag_write_terminal(struct LSM9DS1* dev);
 
