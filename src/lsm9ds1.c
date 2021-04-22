@@ -27,6 +27,19 @@ uint8_t LSM9DS1_INIT0[][2] =
 
 size_t LSM9DS1_INIT0_SIZE = sizeof(LSM9DS1_INIT0);
 
+uint8_t LSM9DS1_INIT_M[][2] =
+{
+ /* Temperature Compensation, X&Y High Performance, Self Test Disabled */
+ { CTRL_REG1_M, 0b1100000 },
+ /* I2C Disable, SPI Read+Write, Continuous Conversion TODO */
+ { CTLR_REG3_M, 0b10000111 },
+ /* Z-Axis High Performance Mode, Big Endian */
+ { CTRL_REG4_M, 0b0001000 },
+ /* Interrupts latched and enabled on INT_M */
+ { INT_CFG_M,   IEL | IEN },
+
+}
+
 int
 lsm9ds1_init(struct LSM9DS1* lsm9ds1)
 {
@@ -427,7 +440,6 @@ lsm9ds1_ag_poll(struct LSM9DS1 *dev, struct options *opts)
       err_output("poll");
       break;
     }
-
 
     if(lseek(fd, 0, SEEK_SET) == -1)
       perror("lseek");

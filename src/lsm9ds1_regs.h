@@ -1,15 +1,30 @@
 #ifndef LSM9DS1_REGS_H
 #define LSM9DS1_REGS_H
 
-enum lsm9ds1_odr
+// TODO we need to prefix many fields by AG or M
+
+enum lsm9ds1_odr_ag
 {
-  ODR_POWER_DOWN,
-  ODR_14p9_HZ,
-  ODR_59p5_HZ,
-  ODR_119_HZ,
-  ODR_238_HZ,
-  ODR_476_HZ,
-  ODR_952_HZ
+  ODR_AG_POWER_DOWN,
+  ODR_AG_14p9_HZ,
+  ODR_AG_59p5_HZ,
+  ODR_AG_119_HZ,
+  ODR_AG_238_HZ,
+  ODR_AG_476_HZ,
+  ODR_AG_952_HZ
+};
+
+enum lsm9ds1_odr_m
+{
+  ODR_M_POWER_DOWN,
+  ODR_M_0p625_HZ,
+  ODR_M_1p25_HZ,
+  ODR_M_2p5_HZ,
+  ODR_M_5_HZ,
+  ODR_M_10_HZ,
+  ODR_M_20_HZ,
+  ODR_M_40_HZ,
+  ODR_M_80_HZ
 };
 
 #define ACT_THS 0x04

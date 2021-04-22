@@ -71,9 +71,6 @@ int
 lsm9ds1_ag_read(struct LSM9DS1* lsm9ds1, uint8_t reg, uint8_t *data);
 
 int
-lsm9ds1_ag_read2(struct LSM9DS1* lsm9ds1, uint8_t reg, int16_t *data);
-
-int
 lsm9ds1_ag_read_status(struct LSM9DS1* lsm9ds1, uint8_t *status);
 
 int

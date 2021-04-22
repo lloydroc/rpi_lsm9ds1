@@ -33,7 +33,7 @@ options_init(struct options *opts)
   opts->configure = 0;
   opts->gpio_interrupt_ag = GPIO_INTERRUPT_AG;
   opts->interrupt_thresh_g = 0;
-  opts->odr = ODR_14p9_HZ;
+  opts->odr = ODR_AG_14p9_HZ;
   opts->daemon = 0;
   opts->data_file = stdout;
   opts->fd_socket_udp = -1;
@@ -44,19 +44,19 @@ options_parse_odr(char *optval, int *odr)
 {
   *odr = -1;
   if(strcmp("0", optval) == 0)
-    *odr = ODR_POWER_DOWN;
+    *odr = ODR_AG_POWER_DOWN;
   else if(strcmp("14.9", optval) == 0)
-    *odr = ODR_14p9_HZ;
+    *odr = ODR_AG_14p9_HZ;
   else if(strcmp("59.5", optval) == 0)
-    *odr = ODR_59p5_HZ;
+    *odr = ODR_AG_59p5_HZ;
   else if(strcmp("119", optval) == 0)
-    *odr = ODR_119_HZ;
+    *odr = ODR_AG_119_HZ;
   else if(strcmp("238", optval) == 0)
-    *odr = ODR_238_HZ;
+    *odr = ODR_AG_238_HZ;
   else if(strcmp("476", optval) == 0)
-    *odr = ODR_476_HZ;
+    *odr = ODR_AG_476_HZ;
   else if(strcmp("952", optval) == 0)
-    *odr = ODR_952_HZ;
+    *odr = ODR_AG_952_HZ;
   return *odr == -1;
 }
 
