@@ -9,9 +9,6 @@
 #include "spi.h"
 #include "gpio.h"
 
-extern uint8_t LSM9DS1_INIT0[][2];
-extern size_t LSM9DS1_INIT0_SIZE;
-
 struct point
 {
   int16_t x;
@@ -22,18 +19,25 @@ struct point
 struct LSM9DS1
 {
   char *spidev_ag;
+  char *spidev_m;
 
   int spi_clk_hz;
 
   struct SPI spi_ag;
+  struct SPI spi_m;
 
-  int odr;
+  int odr_ag;
+  int odr_m;
 
   int int1_ag_pin;
   int fd_int1_ag_pin;
 
+  int int1_m_pin;
+  int fd_int1_m_pin;
+
   struct point g;
   struct point xl;
+  struct point m;
 
   struct timeval tv;
 };
@@ -62,28 +66,10 @@ int
 lsm9ds1_configure(struct LSM9DS1* lsm9ds1);
 
 int
-lsm9ds1_configure_ag_interrupt(int gpio, int *fd);
+lsm9ds1_configure_interrupt(int gpio, int *fd);
 
 int
-lsm9ds1_unconfigure_ag_interrupt(int gpio, int fd);
-
-int
-lsm9ds1_ag_read(struct LSM9DS1* lsm9ds1, uint8_t reg, uint8_t *data);
-
-int
-lsm9ds1_ag_read_status(struct LSM9DS1* lsm9ds1, uint8_t *status);
-
-int
-lsm9ds1_ag_read_xyz(struct LSM9DS1* lsm9ds1, uint8_t reg, struct point *xyz);
-
-int
-lsm9ds1_ag_read_xl(struct LSM9DS1* lsm9ds1);
-
-int
-lsm9ds1_ag_read_g(struct LSM9DS1* lsm9ds1);
-
-int
-lsm9ds1_ag_write(struct LSM9DS1* lsm9ds1, uint8_t reg, uint8_t data);
+lsm9ds1_unconfigure_interrupt(int gpio, int fd);
 
 void
 lsm9ds1_ag_write_terminal(struct LSM9DS1* dev);

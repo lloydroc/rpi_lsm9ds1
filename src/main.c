@@ -25,7 +25,7 @@ void signal_handler(int sig)
 int
 main(int argc, char *argv[])
 {
-  int fd, ret;
+  int fd_ag, fd_m, ret;
 
   if (signal(SIGINT, signal_handler) == SIG_ERR)
     err_output("installing SIGNT signal handler");
@@ -45,20 +45,37 @@ main(int argc, char *argv[])
     return EXIT_SUCCESS;
   }
 
-  if(lsm9ds1_configure_ag_interrupt(opts.gpio_interrupt_ag, &fd))
+#ifndef HAVE_LINUX_SPI_SPIDEV_H
+  fprintf(stderr, "Linux headers for SPI not found ... exiting\n");
+  return EXIT_FAILURE;
+#endif
+
+  if(lsm9ds1_configure_interrupt(opts.gpio_interrupt_ag, &fd_ag))
   {
-    fprintf(stderr, "unable to configure interrupt %d\n", opts.gpio_interrupt_ag);
+    fprintf(stderr, "unable to configure AG interrupt %d\n", opts.gpio_interrupt_ag);
+    return EXIT_FAILURE;
+  }
+
+  if(lsm9ds1_configure_interrupt(opts.gpio_interrupt_m, &fd_m))
+  {
+    fprintf(stderr, "unable to configure M interrupt %d\n", opts.gpio_interrupt_m);
     return EXIT_FAILURE;
   }
 
   if(opts.spi_dev == 0)
+  {
     dev.spidev_ag = "/dev/spidev0.0";
+    dev.spidev_m = "/dev/spidev0.1";
+  }
   else if(opts.spi_dev == 1)
-    dev.spidev_ag = "/dev/spidev0.1";
+  {
+    dev.spidev_ag = "/dev/spidev1.1";
+    dev.spidev_m = "/dev/spidev1.1";
+  }
 
   dev.spi_clk_hz = opts.spi_clk_hz;
-  dev.odr = opts.odr;
-  dev.fd_int1_ag_pin = fd;
+  dev.odr_ag = opts.odr_ag;
+  dev.fd_int1_ag_pin = fd_ag;
 
   lsm9ds1_init(&dev);
 

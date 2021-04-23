@@ -1,7 +1,7 @@
 #include "lsm9ds1.h"
 
 /* Interrupt driven for XL and G */
-uint8_t LSM9DS1_INIT0[][2] =
+uint8_t LSM9DS1_AG_INIT[][2] =
 {
   /* Block Data Update, Register address automatic increment on SPI */
   { CTRL_REG8,      BDU | IF_ADD_INC },
@@ -25,19 +25,114 @@ uint8_t LSM9DS1_INIT0[][2] =
   { FIFO_CTRL,      0b00000000       },
 };
 
-size_t LSM9DS1_INIT0_SIZE = sizeof(LSM9DS1_INIT0);
+size_t LSM9DS1_AG_INIT_SIZE = sizeof(LSM9DS1_AG_INIT);
 
-uint8_t LSM9DS1_INIT_M[][2] =
+uint8_t LSM9DS1_M_INIT[][2] =
 {
  /* Temperature Compensation, X&Y High Performance, Self Test Disabled */
  { CTRL_REG1_M, 0b1100000 },
  /* I2C Disable, SPI Read+Write, Continuous Conversion TODO */
- { CTLR_REG3_M, 0b10000111 },
+ { CTRL_REG3_M, 0b10000111 },
  /* Z-Axis High Performance Mode, Big Endian */
  { CTRL_REG4_M, 0b0001000 },
  /* Interrupts latched and enabled on INT_M */
- { INT_CFG_M,   IEL | IEN },
+ { INT_CFG_M,   0b11100111 },
 
+};
+
+size_t LSM9DS1_M_INIT_SIZE = sizeof(LSM9DS1_M_INIT);
+
+static int
+lsm9ds1_read(struct SPI* spi, uint8_t reg, uint8_t *data)
+{
+  int ret;
+  uint8_t tx[2], rx[2];
+  tx[0] = 0x80 | reg;
+  tx[1] = 0;
+  ret = spi_transfer(spi, tx, rx, 2);
+  *data = rx[1];
+  if(ret)
+    err_output("lsm9ds1_read");
+  return ret;
+}
+
+int
+lsm9ds1_write(struct SPI* spi, uint8_t reg, uint8_t data)
+{
+  int ret;
+  uint8_t tx[2], rx[2];
+  tx[0] = 0x7F & reg;
+  tx[1] = data;
+  ret = spi_transfer(spi, tx, rx, 2);
+  if(ret)
+    err_output("lsm9ds1_write");
+  return ret;
+}
+
+static int
+lsm9ds1_read_xyz(struct SPI* spi, uint8_t reg, struct point *xyz)
+{
+  int ret;
+  uint8_t tx[7], rx[7];
+  tx[0] = 0x80 | reg;
+  for(int i=1; i<7; i++) tx[i] = 0;
+  ret = spi_transfer(spi, tx, rx, 7);
+  xyz->x = rx[1] + (rx[2] << 8);
+  xyz->y = rx[3] + (rx[4] << 8);
+  xyz->z = rx[5] + (rx[6] << 8);
+
+  if(ret)
+    err_output("lsm9ds1_read_xyz");
+  return ret;
+}
+
+static int
+lsm9ds1_ag_read_status(struct LSM9DS1* lsm9ds1, uint8_t *status)
+{
+  return lsm9ds1_read(&lsm9ds1->spi_ag, STATUS_REG, status);
+}
+
+static int
+lsm9ds1_m_read_status(struct LSM9DS1* lsm9ds1, uint8_t *status)
+{
+  return lsm9ds1_read(&lsm9ds1->spi_m, STATUS_REG_M, status);
+}
+
+static int
+lsm9ds1_ag_read_xl(struct LSM9DS1* lsm9ds1)
+{
+  int ret;
+  ret = lsm9ds1_read_xyz(&lsm9ds1->spi_ag, OUT_X_XL, &lsm9ds1->xl);
+
+  if(ret)
+    err_output("lsm9ds1_ag_read_xl");
+
+  return ret;
+}
+
+static int
+lsm9ds1_ag_read_g(struct LSM9DS1* lsm9ds1)
+{
+  int ret;
+  ret = lsm9ds1_read_xyz(&lsm9ds1->spi_ag, OUT_X_G, &lsm9ds1->g);
+
+  if(ret)
+    err_output("lsm9ds1_ag_read_g");
+
+  return ret;
+}
+
+
+static int
+lsm9ds1_m_read(struct LSM9DS1* lsm9ds1)
+{
+  int ret;
+  ret = lsm9ds1_read_xyz(&lsm9ds1->spi_ag, OUT_X_L_M, &lsm9ds1->m);
+
+  if(ret)
+    err_output("lsm9ds1_m_read");
+
+  return ret;
 }
 
 int
@@ -51,6 +146,13 @@ lsm9ds1_init(struct LSM9DS1* lsm9ds1)
     err_output("lsm9ds1_init: opening %s", lsm9ds1->spidev_ag);
     return ret;
   }
+
+  ret = spi_init(&lsm9ds1->spi_m, lsm9ds1->spidev_m, lsm9ds1->spi_clk_hz, 0, 8, 0);
+  if(ret == -1)
+  {
+    err_output("lsm9ds1_init: opening %s", lsm9ds1->spidev_m);
+    return ret;
+  }
   return ret;
 }
 
@@ -58,7 +160,8 @@ int
 lsm9ds1_deinit(struct LSM9DS1* lsm9ds1, struct options *opts)
 {
   int ret;
-  ret  = lsm9ds1_unconfigure_ag_interrupt(opts->gpio_interrupt_ag, lsm9ds1->fd_int1_ag_pin);
+  ret  = lsm9ds1_unconfigure_interrupt(opts->gpio_interrupt_ag, lsm9ds1->fd_int1_ag_pin);
+  ret |= lsm9ds1_unconfigure_interrupt(opts->gpio_interrupt_m, lsm9ds1->fd_int1_m_pin);
   ret |= spi_destroy(&lsm9ds1->spi_ag);
   if(opts->data_file != NULL)
     ret |= fclose(opts->data_file);
@@ -67,16 +170,16 @@ lsm9ds1_deinit(struct LSM9DS1* lsm9ds1, struct options *opts)
   return ret;
 }
 
-int
-lsm9ds1_reset(struct LSM9DS1* lsm9ds1)
+static int
+lsm9ds1_ag_reset(struct LSM9DS1* lsm9ds1)
 {
   int ret;
   uint8_t status = BOOT;
   int safety = 100000;
-  ret  = lsm9ds1_ag_write(lsm9ds1, CTRL_REG1_G, 0);
-  ret |= lsm9ds1_ag_write(lsm9ds1, CTRL_REG6_XL, 0);
-  //ret |= lsm9ds1_ag_write(lsm9ds1, CTRL_REG8, BOOT | SW_RESET);
-  ret |= lsm9ds1_ag_write(lsm9ds1, CTRL_REG8, BOOT);
+  ret  = lsm9ds1_write(&lsm9ds1->spi_ag, CTRL_REG1_G, 0);
+  ret |= lsm9ds1_write(&lsm9ds1->spi_ag, CTRL_REG6_XL, 0);
+  //ret |= lsm9ds1_write(&lsm9ds1->spi_ag, CTRL_REG8, BOOT | SW_RESET);
+  ret |= lsm9ds1_write(&lsm9ds1->spi_ag, CTRL_REG8, BOOT);
   while(status & BOOT)
   {
     lsm9ds1_ag_read_status(lsm9ds1, &status);
@@ -91,12 +194,31 @@ lsm9ds1_reset(struct LSM9DS1* lsm9ds1)
 }
 
 int
-lsm9ds1_test(struct LSM9DS1* lsm9ds1)
+lsm9ds1_m_reset(struct LSM9DS1* lsm9ds1)
+{
+  int ret;
+  // See no way to know it has booted like the AG sensor
+  ret = lsm9ds1_write(&lsm9ds1->spi_m, CTRL_REG8, 0b00001000);
+  return ret;
+}
+
+int
+lsm9ds1_reset(struct LSM9DS1* lsm9ds1)
+{
+  int ret;
+  ret  = lsm9ds1_ag_reset(lsm9ds1);
+  ret |= lsm9ds1_m_reset(lsm9ds1);
+
+  return ret;
+}
+
+static int
+lsm9ds1_ag_test(struct LSM9DS1* lsm9ds1)
 {
   uint8_t val, val2;
   int ret = 0;
   val = 0;
-  lsm9ds1_ag_read(lsm9ds1, WHO_AM_I, &val);
+  lsm9ds1_read(&lsm9ds1->spi_ag, WHO_AM_I, &val);
   if(val != WHO_AM_I_VAL)
   {
     fprintf(stderr, "WHO_AM_I register value 0x%02x not 0x%02x\n", val, WHO_AM_I_VAL);
@@ -104,57 +226,126 @@ lsm9ds1_test(struct LSM9DS1* lsm9ds1)
   }
 
   // read a value from the lsm9ds1
-  lsm9ds1_ag_read(lsm9ds1, REFERENCE_G, &val2);
+  lsm9ds1_read(&lsm9ds1->spi_ag, REFERENCE_G, &val2);
   // write arbitrary value
-  lsm9ds1_ag_write(lsm9ds1, REFERENCE_G, 0xab);
+  lsm9ds1_write(&lsm9ds1->spi_ag, REFERENCE_G, 0xab);
   // read value back
-  lsm9ds1_ag_read(lsm9ds1, REFERENCE_G, &val);
+  lsm9ds1_read(&lsm9ds1->spi_ag, REFERENCE_G, &val);
   // chack value
   if(val != 0xab)
   {
     fprintf(stderr, "Wrote register REFERENCE_G with 0x%02x and read back 0x%02x\n", 0xab, val);
     ret++;
   }
-  // write original value back
-  lsm9ds1_ag_write(lsm9ds1, REFERENCE_G, val2);
 
-  lsm9ds1_ag_read(lsm9ds1, INT_GEN_CFG_G, &val);
-  if(val != LIR_G)
-  {
-    fprintf(stderr, "Interrupts not configured. Has the LSM9DS1 been configured?\n");
-    ret++;
-  }
+  // write original value back
+  lsm9ds1_write(&lsm9ds1->spi_ag, REFERENCE_G, val2);
 
   /* would be nice if the datasheet documented what this does
    * and how to read the result
-  lsm9ds1_ag_write(lsm9ds1, CTRL_REG10, 0); // disable self-test
-  lsm9ds1_ag_write(lsm9ds1, CTRL_REG10, ST_G | ST_XL); // enable self-test
-  lsm9ds1_ag_write(lsm9ds1, CTRL_REG10, 0); // disable self-test
+  lsm9ds1_write(&lsm9ds1->spi_ag, CTRL_REG10, 0); // disable self-test
+  lsm9ds1_write(&lsm9ds1->spi_ag, CTRL_REG10, ST_G | ST_XL); // enable self-test
+  lsm9ds1_write(&lsm9ds1->spi_ag, CTRL_REG10, 0); // disable self-test
   */
 
   return ret;
 }
 
-int
-lsm9ds1_configure(struct LSM9DS1* lsm9ds1)
+static int
+lsm9ds1_m_test(struct LSM9DS1* lsm9ds1)
 {
-  int numregs = LSM9DS1_INIT0_SIZE/2;
+  uint8_t val, val2;
+  int ret = 0;
+  val = 0;
+  lsm9ds1_read(&lsm9ds1->spi_m, WHO_AM_I_M, &val);
+  if(val != WHO_AM_I_M_VAL)
+  {
+    fprintf(stderr, "WHO_AM_I_M register value 0x%02x not 0x%02x\n", val, WHO_AM_I_M_VAL);
+    ret++;
+  }
+
+  // read a value from the lsm9ds1
+  lsm9ds1_read(&lsm9ds1->spi_m, OFFSET_X_REG_L_M, &val2);
+  // write arbitrary value
+  lsm9ds1_write(&lsm9ds1->spi_m, OFFSET_X_REG_L_M, 0xab);
+  // read value back
+  lsm9ds1_read(&lsm9ds1->spi_m, OFFSET_X_REG_L_M, &val);
+  // chack value
+  if(val != 0xab)
+  {
+    fprintf(stderr, "Wrote register OFFSET_X_REG_L_M with 0x%02x and read back 0x%02x\n", 0xab, val);
+    ret++;
+  }
+  // write original value back
+  lsm9ds1_write(&lsm9ds1->spi_m, OFFSET_X_REG_L_M, val2);
+
+  return ret;
+}
+
+int
+lsm9ds1_test(struct LSM9DS1* lsm9ds1)
+{
+  if(lsm9ds1_ag_test(lsm9ds1))
+    return 1;
+
+  if(lsm9ds1_m_test(lsm9ds1))
+    return 1;
+
+  return 0;
+
+}
+
+static int
+lsm9ds1_configure_ag(struct LSM9DS1* lsm9ds1)
+{
+  int numregs = LSM9DS1_AG_INIT_SIZE/2;
   uint8_t reg, val, tval;
   int ret = 0;
   for(int i=0;i<numregs;i++)
   {
-    reg = LSM9DS1_INIT0[i][0];
-    val = LSM9DS1_INIT0[i][1];
+    reg = LSM9DS1_AG_INIT[i][0];
+    val = LSM9DS1_AG_INIT[i][1];
 
     if(reg == CTRL_REG1_G || reg == CTRL_REG6_XL)
     {
       // first 3 bits are the odr
       val &= 0b00011111;
-      val |= (lsm9ds1->odr << 5);
+      val |= (lsm9ds1->odr_ag << 5);
     }
 
-    lsm9ds1_ag_write(lsm9ds1, reg, val);
-    lsm9ds1_ag_read(lsm9ds1, reg, &tval);
+    lsm9ds1_write(&lsm9ds1->spi_ag, reg, val);
+    lsm9ds1_read(&lsm9ds1->spi_ag, reg, &tval);
+
+    // read back what we wrote to confirm correct
+    if(val != tval)
+    {
+      fprintf(stderr, "register %d val %d is %d\n", reg, val, tval);
+      ret = 1;
+    }
+  }
+  return ret;
+}
+
+static int
+lsm9ds1_configure_m(struct LSM9DS1* lsm9ds1)
+{
+  int numregs = LSM9DS1_M_INIT_SIZE/2;
+  uint8_t reg, val, tval;
+  int ret = 0;
+  for(int i=0;i<numregs;i++)
+  {
+    reg = LSM9DS1_M_INIT[i][0];
+    val = LSM9DS1_M_INIT[i][1];
+
+    if(reg == CTRL_REG1_M)
+    {
+      // first 3 bits are the odr
+      val &= 0b00000111;
+      val |= (lsm9ds1->odr_m << 3);
+    }
+
+    lsm9ds1_write(&lsm9ds1->spi_ag, reg, val);
+    lsm9ds1_read(&lsm9ds1->spi_ag, reg, &tval);
 
     // read back what we wrote to confirm correct
     if(val != tval)
@@ -167,7 +358,17 @@ lsm9ds1_configure(struct LSM9DS1* lsm9ds1)
 }
 
 int
-lsm9ds1_configure_ag_interrupt(int gpio, int *fd)
+lsm9ds1_configure(struct LSM9DS1* lsm9ds1)
+{
+  if(lsm9ds1_configure_ag(lsm9ds1))
+    return 1;
+  if(lsm9ds1_configure_m(lsm9ds1))
+    return 1;
+  return 0;
+}
+
+int
+lsm9ds1_configure_interrupt(int gpio, int *fd)
 {
   int direction, edge;
 
@@ -235,125 +436,10 @@ lsm9ds1_configure_ag_interrupt(int gpio, int *fd)
 }
 
 int
-lsm9ds1_unconfigure_ag_interrupt(int gpio, int fd)
+lsm9ds1_unconfigure_interrupt(int gpio, int fd)
 {
   gpio_close(fd);
   return gpio_unexport(gpio);
-}
-
-int
-lsm9ds1_ag_read(struct LSM9DS1* lsm9ds1, uint8_t reg, uint8_t *data)
-{
-  int ret;
-  uint8_t tx[2], rx[2];
-  tx[0] = 0x80 | reg;
-  tx[1] = 0;
-  ret = spi_transfer(&lsm9ds1->spi_ag, tx, rx, 2);
-  *data = rx[1];
-  if(ret)
-    err_output("lsm9ds1_ag_data");
-  return ret;
-}
-
-int
-lsm9ds1_ag_read_status(struct LSM9DS1* lsm9ds1, uint8_t *status)
-{
-  return lsm9ds1_ag_read(lsm9ds1, STATUS_REG, status);
-}
-
-int
-lsm9ds1_ag_read_xyz(struct LSM9DS1* lsm9ds1, uint8_t reg, struct point *xyz)
-{
-  int ret;
-  uint8_t tx[7], rx[7];
-  tx[0] = 0x80 | reg;
-  for(int i=1; i<7; i++) tx[i] = 0;
-  ret = spi_transfer(&lsm9ds1->spi_ag, tx, rx, 7);
-  xyz->x = rx[1] + (rx[2] << 8);
-  xyz->y = rx[3] + (rx[4] << 8);
-  xyz->z = rx[5] + (rx[6] << 8);
-
-  if(ret)
-    err_output("lsm9ds1_ag_read_xyz");
-  return ret;
-}
-
-/*
-static int
-lsm9ds1_ag_read_average_xyz(struct LSM9DS1* lsm9ds1, uint8_t reg, int N, uint8_t mask, struct point *xyz)
-{
-  int ret;
-  uint8_t status = 0;
-  int32_t acc_x, acc_y, acc_z;
-
-  acc_x = 0;
-  acc_y = 0;
-  acc_z = 0;
-
-  for(int i=0;i<N;i++)
-  {
-    status = 0;
-    while((status & mask) == 0)
-    {
-      ret = lsm9ds1_ag_read_status(lsm9ds1, &status);
-    }
-    ret = lsm9ds1_ag_read_xyz(lsm9ds1, reg, xyz);
-    printf("%3d %+d %+d %+d\n", i, xyz->x, xyz->y, xyz->z);
-    acc_x += xyz->x;
-    acc_y += xyz->y;
-    acc_z += xyz->z;
-  }
-
-  acc_x /= N;
-  acc_y /= N;
-  acc_z /= N;
-
-  xyz->x = acc_x;
-  xyz->y = acc_y;
-  xyz->z = acc_z;
-
-  if(ret)
-    err_output("lsm9ds1_axl_read_xl");
-
-  return ret;
-}
-*/
-
-int
-lsm9ds1_ag_read_xl(struct LSM9DS1* lsm9ds1)
-{
-  int ret;
-  ret = lsm9ds1_ag_read_xyz(lsm9ds1, OUT_X_XL, &lsm9ds1->xl);
-
-  if(ret)
-    err_output("lsm9ds1_ag_read_xl");
-
-  return ret;
-}
-
-int
-lsm9ds1_ag_read_g(struct LSM9DS1* lsm9ds1)
-{
-  int ret;
-  ret = lsm9ds1_ag_read_xyz(lsm9ds1, OUT_X_G, &lsm9ds1->g);
-
-  if(ret)
-    err_output("lsm9ds1_ag_read_g");
-
-  return ret;
-}
-
-int
-lsm9ds1_ag_write(struct LSM9DS1* lsm9ds1, uint8_t reg, uint8_t data)
-{
-  int ret;
-  uint8_t tx[2], rx[2];
-  tx[0] = 0x7F & reg;
-  tx[1] = data;
-  ret = spi_transfer(&lsm9ds1->spi_ag, tx, rx, 2);
-  if(ret)
-    err_output("lsm9ds1_ag_data");
-  return ret;
 }
 
 void
@@ -407,7 +493,7 @@ int
 lsm9ds1_ag_poll(struct LSM9DS1 *dev, struct options *opts)
 {
   int timeout;
-  struct pollfd pfd;
+  struct pollfd pfd[2];
   int fd, fd_data_file;
   int ret;
   char buf[8];
@@ -422,14 +508,14 @@ lsm9ds1_ag_poll(struct LSM9DS1 *dev, struct options *opts)
   // we will wait forever
   timeout = -1;
 
-  fd = dev->fd_int1_ag_pin;
-
-  pfd.fd = fd;
-  pfd.events = POLLPRI;
+  pfd[0].fd = dev->fd_int1_ag_pin;
+  pfd[0].events = POLLPRI;
+  pfd[1].fd = dev->fd_int1_m_pin;
+  pfd[1].events = POLLPRI;
 
   while(1)
   {
-    ret = poll(&pfd, 1, timeout);
+    ret = poll(pfd, 2, timeout);
     if(ret == 0)
     {
       fprintf(stderr, "poll timed out\n");
@@ -441,13 +527,22 @@ lsm9ds1_ag_poll(struct LSM9DS1 *dev, struct options *opts)
       break;
     }
 
-    if(lseek(fd, 0, SEEK_SET) == -1)
-      perror("lseek");
-    if(read(fd, buf, sizeof(buf)) == -1)
-      perror("read");
+    if(pfd[0].revents & POLLPRI)
+    {
+      if(lseek(pfd[0].fd, 0, SEEK_SET) == -1)
+	perror("lseek");
+      if(read(pfd[0].fd, buf, sizeof(buf)) == -1)
+	perror("read");
 
-    lsm9ds1_ag_read_xl(dev);
-    lsm9ds1_ag_read_g(dev);
+      lsm9ds1_ag_read_xl(dev);
+      lsm9ds1_ag_read_g(dev);
+    }
+    if(pfd[1].revents & POLLPRI)
+    {
+      lsm9ds1_m_read(dev);
+    }
+
+    // TODO what if error from above
 
     gettimeofday(&dev->tv, NULL);
 
