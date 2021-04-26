@@ -30,9 +30,9 @@ size_t LSM9DS1_AG_INIT_SIZE = sizeof(LSM9DS1_AG_INIT);
 uint8_t LSM9DS1_M_INIT[][2] =
 {
  /* Temperature Compensation, X&Y High Performance, Self Test Disabled */
- { CTRL_REG1_M, 0b1100000 },
+ { CTRL_REG1_M, 0b11000000 },
  /* I2C Disable, SPI Read+Write, Continuous Conversion TODO */
- { CTRL_REG3_M, 0b10000111 },
+ { CTRL_REG3_M, 0b10000100 },
  /* Z-Axis High Performance Mode, Big Endian */
  { CTRL_REG4_M, 0b0001000 },
  /* Interrupts latched and enabled on INT_M */
@@ -320,7 +320,7 @@ lsm9ds1_configure_ag(struct LSM9DS1* lsm9ds1)
     // read back what we wrote to confirm correct
     if(val != tval)
     {
-      fprintf(stderr, "register %d val %d is %d\n", reg, val, tval);
+      fprintf(stderr, "register 0x%x val 0x%x is 0x%x\n", reg, val, tval);
       ret = 1;
     }
   }
@@ -340,8 +340,8 @@ lsm9ds1_configure_m(struct LSM9DS1* lsm9ds1)
 
     if(reg == CTRL_REG1_M)
     {
-      // first 3 bits are the odr
-      val &= 0b00000111;
+      // and out the odr
+      val &= 0b11100011;
       val |= (lsm9ds1->odr_m << 3);
     }
 
@@ -351,7 +351,7 @@ lsm9ds1_configure_m(struct LSM9DS1* lsm9ds1)
     // read back what we wrote to confirm correct
     if(val != tval)
     {
-      fprintf(stderr, "register %d val %d is %d\n", reg, val, tval);
+      fprintf(stderr, "register 0x%x val 0x%x is 0x%x\n", reg, val, tval);
       ret = 1;
     }
   }
