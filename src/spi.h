@@ -1,6 +1,7 @@
 #ifndef SPI_INCLUDED
 #define SPI_INCLUDED
 
+#include "../config.h"
 #include <string.h>
 #include <stdio.h>
 #include <fcntl.h>
@@ -22,7 +23,6 @@
 #define SPIPATH "/dev/spidev"
 
 struct SPI {
-  char* device;
   unsigned int speed_hz;
   uint8_t mode;
   uint8_t bits_per_word;

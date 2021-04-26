@@ -23,7 +23,7 @@
 #endif
 
 #ifndef GPIO_INTERRUPT_M
-#define GPIO_INTERRUPT_M 19
+#define GPIO_INTERRUPT_M 6
 #endif
 
 struct options

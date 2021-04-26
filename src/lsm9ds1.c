@@ -92,11 +92,13 @@ lsm9ds1_ag_read_status(struct LSM9DS1* lsm9ds1, uint8_t *status)
   return lsm9ds1_read(&lsm9ds1->spi_ag, STATUS_REG, status);
 }
 
+/*
 static int
 lsm9ds1_m_read_status(struct LSM9DS1* lsm9ds1, uint8_t *status)
 {
   return lsm9ds1_read(&lsm9ds1->spi_m, STATUS_REG_M, status);
 }
+*/
 
 static int
 lsm9ds1_ag_read_xl(struct LSM9DS1* lsm9ds1)
@@ -163,6 +165,7 @@ lsm9ds1_deinit(struct LSM9DS1* lsm9ds1, struct options *opts)
   ret  = lsm9ds1_unconfigure_interrupt(opts->gpio_interrupt_ag, lsm9ds1->fd_int1_ag_pin);
   ret |= lsm9ds1_unconfigure_interrupt(opts->gpio_interrupt_m, lsm9ds1->fd_int1_m_pin);
   ret |= spi_destroy(&lsm9ds1->spi_ag);
+  ret |= spi_destroy(&lsm9ds1->spi_m);
   if(opts->data_file != NULL)
     ret |= fclose(opts->data_file);
   if(opts->fd_socket_udp != -1)
@@ -197,8 +200,9 @@ int
 lsm9ds1_m_reset(struct LSM9DS1* lsm9ds1)
 {
   int ret;
-  // See no way to know it has booted like the AG sensor
-  ret = lsm9ds1_write(&lsm9ds1->spi_m, CTRL_REG8, 0b00001000);
+  // After we reboot the G sensor, per the datasheet, I don't see a way to
+  // poll and determine if the G sensor has rebooted.
+  ret = lsm9ds1_write(&lsm9ds1->spi_m, CTRL_REG2_M, 0b00001000);
   return ret;
 }
 
@@ -285,14 +289,11 @@ lsm9ds1_m_test(struct LSM9DS1* lsm9ds1)
 int
 lsm9ds1_test(struct LSM9DS1* lsm9ds1)
 {
-  if(lsm9ds1_ag_test(lsm9ds1))
-    return 1;
+  int failed;
+  failed = lsm9ds1_ag_test(lsm9ds1);
+  failed += lsm9ds1_m_test(lsm9ds1);
 
-  if(lsm9ds1_m_test(lsm9ds1))
-    return 1;
-
-  return 0;
-
+  return failed;
 }
 
 static int
@@ -344,8 +345,8 @@ lsm9ds1_configure_m(struct LSM9DS1* lsm9ds1)
       val |= (lsm9ds1->odr_m << 3);
     }
 
-    lsm9ds1_write(&lsm9ds1->spi_ag, reg, val);
-    lsm9ds1_read(&lsm9ds1->spi_ag, reg, &tval);
+    lsm9ds1_write(&lsm9ds1->spi_m, reg, val);
+    lsm9ds1_read(&lsm9ds1->spi_m, reg, &tval);
 
     // read back what we wrote to confirm correct
     if(val != tval)
@@ -363,7 +364,7 @@ lsm9ds1_configure(struct LSM9DS1* lsm9ds1)
   if(lsm9ds1_configure_ag(lsm9ds1))
     return 1;
   if(lsm9ds1_configure_m(lsm9ds1))
-    return 1;
+    return 2;
   return 0;
 }
 
@@ -494,7 +495,7 @@ lsm9ds1_ag_poll(struct LSM9DS1 *dev, struct options *opts)
 {
   int timeout;
   struct pollfd pfd[2];
-  int fd, fd_data_file;
+  int fd_data_file;
   int ret;
   char buf[8];
   int tty;
@@ -515,7 +516,7 @@ lsm9ds1_ag_poll(struct LSM9DS1 *dev, struct options *opts)
 
   while(1)
   {
-    ret = poll(pfd, 2, timeout);
+    ret = poll(pfd, 1, timeout);
     if(ret == 0)
     {
       fprintf(stderr, "poll timed out\n");
@@ -560,7 +561,8 @@ lsm9ds1_ag_poll(struct LSM9DS1 *dev, struct options *opts)
     }
   }
 
-  close(fd);
+  close(pfd[0].fd);
+  close(pfd[1].fd);
 
   return 0;
 }

@@ -13,7 +13,7 @@ usage(void)
 -z --spi-clk-hz SPEED         Speed of SPI Clock. Default 8000000 Hz\n\
 -s --spi-device SPI           Device. Default 0.\n\
    --ag-gpio-interrupt GPIO   Interrupt Pin for G and XL. Default 13.\n\
-   --m-gpio-interrupt GPIO    Interrupt Pin for M. Default 19.\n\
+   --m-gpio-interrupt GPIO    Interrupt Pin for M. Default 6.\n\
 -c --configure                Write Configuration\n\
 -r --odr-ag ODR               G and XL Sample Frequency in Hz: 14.9, 59.5, 119, 238, 476, 952. Default 14.9 Hz.\n\
 -m --odr-m ODR                M Sample Frequency in Hz: 0.625, 1.25, 2.5, 5, 10, 20, 40, 80. Default 0.625 Hz.\n\

@@ -17,7 +17,7 @@ spi_init(struct SPI* spi, char device[], int speed_hz, uint8_t mode, uint8_t bit
   spi->transfer.speed_hz = speed_hz;
   spi->transfer.bits_per_word = bits_per_word; // bits per word
   spi->transfer.delay_usecs = 0;               // delay in us
-  spi->transfer.cs_change = spi->chip_select;  // affects chip select after transfer
+  spi->transfer.cs_change = 0;                 // affects chip select after transfer
   spi->transfer.tx_nbits = 0;                  // no. bits for writing (default 0)
   spi->transfer.rx_nbits = 0;                  // no. bits for reading (default 0)
   spi->transfer.pad = 0;                       // interbyte delay - check version
@@ -83,7 +83,7 @@ spi_transfer(struct SPI* spi, uint8_t send[], uint8_t rec[], int len)
 
   // send the SPI message (all of the above fields, inc. buffers)
   // 1 is the number of spi_ioc_transfer structs to send
-  int status = ioctl(spi->fd, SPI_IOC_MESSAGE(1), &spi->transfer);
+  status = ioctl(spi->fd, SPI_IOC_MESSAGE(1), &spi->transfer);
   /*
    * cannot find documentation on the return code and < 0 can be success
    if (status < 0) {
