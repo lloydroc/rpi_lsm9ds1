@@ -163,7 +163,6 @@ enum lsm9ds1_odr_ag
 
 enum lsm9ds1_odr_m
 {
-  ODR_M_POWER_DOWN,
   ODR_M_0p625_HZ,
   ODR_M_1p25_HZ,
   ODR_M_2p5_HZ,
@@ -202,8 +201,8 @@ enum lsm9ds1_odr_m
 #define IEN 0b00000001
 
 #define INT_SRC_M 0x31
-#define INT_THS_L 0x32
-#define INT_THS_H 0x33
+#define INT_THS_L_M 0x32
+#define INT_THS_H_M 0x33
 
 
 #endif

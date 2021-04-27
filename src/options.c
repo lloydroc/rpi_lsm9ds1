@@ -16,7 +16,7 @@ usage(void)
    --m-gpio-interrupt GPIO    Interrupt Pin for M. Default 6.\n\
 -c --configure                Write Configuration\n\
 -r --odr-ag ODR               G and XL Sample Frequency in Hz: 14.9, 59.5, 119, 238, 476, 952. Default 14.9 Hz.\n\
--m --odr-m ODR                M Sample Frequency in Hz: 0.625, 1.25, 2.5, 5, 10, 20, 40, 80. Default 0.625 Hz.\n\
+-m --odr-m ODR                M Sample Frequency in Hz: 0.625, 1.25, 2.5, 5, 10, 20, 40, 80. Default 10 Hz.\n\
 -d --daemon                   Run as a Daemon\n\
 -f --file FILENAME            Output data to a File\n\
 -u --socket-udp HOST:PORT     Output data to a UDP Socket\n\
@@ -36,7 +36,7 @@ options_init(struct options *opts)
   opts->gpio_interrupt_ag = GPIO_INTERRUPT_AG;
   opts->gpio_interrupt_m = GPIO_INTERRUPT_M;
   opts->odr_ag = ODR_AG_14p9_HZ;
-  opts->odr_m = ODR_M_0p625_HZ;
+  opts->odr_m = ODR_M_10_HZ;
   opts->daemon = 0;
   opts->data_file = stdout;
   opts->fd_socket_udp = -1;

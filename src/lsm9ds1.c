@@ -8,7 +8,7 @@ uint8_t LSM9DS1_AG_INIT[][2] =
   /* Disable I2C */
   { CTRL_REG9,      I2C_DISABLE      },
   /* Enable G.Z, G.Y, G.Z, XL Latched Interrupt 4D option */
-  { CTRL_REG4,      0b00111011       },
+  { CTRL_REG4,      0b00110011       },
   /* Angular Rate Sensor Control Reg 1: Gyroscope ODR 238Hz TODO */
   { CTRL_REG1_G,    0b10000000       },
   /* Angular Rate Sensor Control Reg 3: Enable Highpass Filter */
@@ -27,17 +27,34 @@ uint8_t LSM9DS1_AG_INIT[][2] =
 
 size_t LSM9DS1_AG_INIT_SIZE = sizeof(LSM9DS1_AG_INIT);
 
+/*
+ * OUCH!!! I spent so much time getting M interrupts to work!
+ * I found the documentation wrong for the CTRL_REG3_M on the
+ * SPI.
+ *
+ * Also, the Big Endian must be set or the interrupt won't fire!!!
+ * The G and XL data comes in as Little Endian so we need to swap it.
+ * It could be a wrong configuration but I've tried many things to
+ * no avail.
+ */
 uint8_t LSM9DS1_M_INIT[][2] =
 {
  /* Temperature Compensation, X&Y High Performance, Self Test Disabled */
- { CTRL_REG1_M, 0b11000000 },
- /* I2C Disable, SPI Read+Write, Continuous Conversion TODO */
- { CTRL_REG3_M, 0b10000100 },
+ { CTRL_REG1_M, 0b11000001 },
+ /* +/- 4 Gauss, Normal Mode, No Reset */
+ { CTRL_REG2_M, 0b00000000 },
+ /* I2C Disable, Single Conversion */
+ { CTRL_REG3_M, 0b10000000 },
  /* Z-Axis High Performance Mode, Big Endian */
- { CTRL_REG4_M, 0b0001000 },
- /* Interrupts latched and enabled on INT_M */
- { INT_CFG_M,   0b11100111 },
-
+ { CTRL_REG4_M, 0b00001010 },
+ /* Disable Fast Read, Disble Block Update */
+ { CTRL_REG5_M, 0b00000000 },
+ /* Interrupts threshold low */
+ { INT_THS_L_M,   0 },
+ /* Interrupts threshold high */
+ { INT_THS_H_M,   0 },
+ /* Interrupts enabled on INT_M active High for XYZ*/
+ { INT_CFG_M,   0b11100101 },
 };
 
 size_t LSM9DS1_M_INIT_SIZE = sizeof(LSM9DS1_M_INIT);
@@ -87,6 +104,23 @@ lsm9ds1_read_xyz(struct SPI* spi, uint8_t reg, struct point *xyz)
 }
 
 static int
+lsm9ds1_read_m_xyz_be(struct SPI* spi, uint8_t reg, struct point *xyz)
+{
+  int ret;
+  uint8_t tx[7], rx[7];
+  tx[0] = 0xC0 | reg;
+  for(int i=1; i<7; i++) tx[i] = 0;
+  ret = spi_transfer(spi, tx, rx, 7);
+  xyz->x = rx[2] + (rx[1] << 8);
+  xyz->y = rx[4] + (rx[3] << 8);
+  xyz->z = rx[6] + (rx[5] << 8);
+
+  if(ret)
+    err_output("lsm9ds1_read_xyz");
+  return ret;
+}
+
+static int
 lsm9ds1_ag_read_status(struct LSM9DS1* lsm9ds1, uint8_t *status)
 {
   return lsm9ds1_read(&lsm9ds1->spi_ag, STATUS_REG, status);
@@ -129,7 +163,7 @@ static int
 lsm9ds1_m_read(struct LSM9DS1* lsm9ds1)
 {
   int ret;
-  ret = lsm9ds1_read_xyz(&lsm9ds1->spi_ag, OUT_X_L_M, &lsm9ds1->m);
+  ret = lsm9ds1_read_m_xyz_be(&lsm9ds1->spi_m, OUT_X_L_M, &lsm9ds1->m);
 
   if(ret)
     err_output("lsm9ds1_m_read");
@@ -342,7 +376,7 @@ lsm9ds1_configure_m(struct LSM9DS1* lsm9ds1)
     {
       // and out the odr
       val &= 0b11100011;
-      val |= (lsm9ds1->odr_m << 3);
+      val |= (lsm9ds1->odr_m << 2);
     }
 
     lsm9ds1_write(&lsm9ds1->spi_m, reg, val);
@@ -448,6 +482,7 @@ lsm9ds1_ag_write_terminal(struct LSM9DS1* dev)
 {
     printf("\rG(x,y,z)=(%+6d,%+6d,%+6d)", dev->g.x, dev->g.y, dev->g.z);
     printf(" XL(x,y,z)=(%+6d,%+6d,%+6d)", dev->xl.x, dev->xl.y, dev->xl.z);
+    printf(" M(x,y,z)=(%+6d,%+6d,%+6d)", dev->m.x, dev->m.y, dev->m.z);
     fflush(stdout);
 }
 
@@ -510,16 +545,16 @@ lsm9ds1_ag_poll(struct LSM9DS1 *dev, struct options *opts)
   timeout = -1;
 
   pfd[0].fd = dev->fd_int1_ag_pin;
-  pfd[0].events = POLLPRI;
+  pfd[0].events = POLLPRI | POLLERR;
   pfd[1].fd = dev->fd_int1_m_pin;
-  pfd[1].events = POLLPRI;
+  pfd[1].events = POLLPRI | POLLERR;
 
   while(1)
   {
-    ret = poll(pfd, 1, timeout);
+    ret = poll(pfd, 2, timeout);
     if(ret == 0)
     {
-      fprintf(stderr, "poll timed out\n");
+      err_output("poll timed out\n");
       break;
     }
     else if (ret < 0)
@@ -528,22 +563,36 @@ lsm9ds1_ag_poll(struct LSM9DS1 *dev, struct options *opts)
       break;
     }
 
-    if(pfd[0].revents & POLLPRI)
+    if(pfd[0].revents & pfd[0].events)
     {
       if(lseek(pfd[0].fd, 0, SEEK_SET) == -1)
-	perror("lseek");
+        err_output("lseek");
       if(read(pfd[0].fd, buf, sizeof(buf)) == -1)
-	perror("read");
+        err_output("read");
 
       lsm9ds1_ag_read_xl(dev);
       lsm9ds1_ag_read_g(dev);
     }
-    if(pfd[1].revents & POLLPRI)
+    else if(pfd[0].revents)
     {
-      lsm9ds1_m_read(dev);
+      err_output("unknown event occured xl=%d %d %d\n", pfd[0].revents, POLLPRI, POLLERR);
+      continue;
     }
 
-    // TODO what if error from above
+    if(pfd[1].revents & pfd[1].events)
+    {
+      if(lseek(pfd[1].fd, 0, SEEK_SET) == -1)
+        err_output("lseek");
+      if(read(pfd[1].fd, buf, sizeof(buf)) == -1)
+        err_output("read");
+
+      lsm9ds1_m_read(dev);
+    }
+    else if(pfd[1].revents)
+    {
+      err_output("unknown event occured m=%d %d %d\n", pfd[1].revents, POLLPRI, POLLERR);
+      continue;
+    }
 
     gettimeofday(&dev->tv, NULL);
 
