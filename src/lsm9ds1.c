@@ -8,7 +8,7 @@ uint8_t LSM9DS1_AG_INIT[][2] =
   /* Disable I2C */
   { CTRL_REG9,      I2C_DISABLE      },
   /* Enable G.Z, G.Y, G.Z, XL Latched Interrupt 4D option */
-  { CTRL_REG4,      0b00110011       },
+  { CTRL_REG4,      0b00111011       },
   /* Angular Rate Sensor Control Reg 1: Gyroscope ODR 238Hz TODO */
   { CTRL_REG1_G,    0b10000000       },
   /* Angular Rate Sensor Control Reg 3: Enable Highpass Filter */
