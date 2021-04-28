@@ -4,6 +4,7 @@ void
 usage(void)
 {
   printf("Usage: lsm9ds1 [OPTIONS]\n\n");
+  printf("Version: %s\n", VERSION);
   printf("A command line tool to read data from the ST LSM9DS1.\n");
   printf("After wiring up the lsm9ds1 you MUST run a configuration on it first.\n\n");
   printf("OPTIONS:\n\

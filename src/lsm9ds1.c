@@ -494,16 +494,16 @@ lsm9ds1_ag_write_file(struct LSM9DS1* dev, FILE* file, int binary)
     fwrite(&dev->tv, sizeof(struct timeval), 1, file);
     fwrite(&dev->g,  sizeof(int16_t), 3, file);
     fwrite(&dev->xl, sizeof(int16_t), 3, file);
+    fwrite(&dev->m, sizeof(int16_t), 3, file);
   }
   else
   {
-    const char* format = "%ld.%06ld,%d,%d,%d,%d,%d,%d\n";
-    fprintf(file, format, dev->tv.tv_sec, dev->tv.tv_usec, dev->g.x, dev->g.y, dev->g.z, dev->xl.x, dev->xl.y, dev->xl.z);
+    const char* format = "%ld.%06ld,%d,%d,%d,%d,%d,%d,%d,%d,%d\n";
+    fprintf(file, format, dev->tv.tv_sec, dev->tv.tv_usec, dev->g.x, dev->g.y, dev->g.z, dev->xl.x, dev->xl.y, dev->xl.z, dev->m.x, dev->m.y, dev->m.z);
   }
 }
 
-static
-int
+static int
 lsm9ds1_ag_write_socket_udp(struct LSM9DS1 *dev, struct options *opts)
 {
   ssize_t buffrx;
@@ -519,6 +519,9 @@ lsm9ds1_ag_write_socket_udp(struct LSM9DS1 *dev, struct options *opts)
   datagram.xl_x = htons(dev->xl.x);
   datagram.xl_y = htons(dev->xl.y);
   datagram.xl_z = htons(dev->xl.z);
+  datagram.m_x = htons(dev->m.x);
+  datagram.m_y = htons(dev->m.y);
+  datagram.m_z = htons(dev->m.z);
 
   buffrx = sendto(opts->fd_socket_udp, &datagram, sizeof(datagram), 0, (struct sockaddr *)&opts->socket_udp_dest, servsock_len);
 
@@ -587,6 +590,11 @@ lsm9ds1_ag_poll(struct LSM9DS1 *dev, struct options *opts)
         err_output("read");
 
       lsm9ds1_m_read(dev);
+      // we will continue. The implication here is that we assume
+      // the XL and G sensors are sampling faster so the M data
+      // is fused when we receive data for them. This is a crude
+      // way of fusing the M data.
+      continue;
     }
     else if(pfd[1].revents)
     {

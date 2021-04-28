@@ -1,4 +1,4 @@
-AC_INIT([rpi_lsm9ds1], [1.0], [lloyd@lloydrochester.com])
+AC_INIT([rpi_lsm9ds1], [2.0], [lloyd@lloydrochester.com])
 
 AM_INIT_AUTOMAKE([-Wall -Werror foreign])
 AC_CONFIG_SRCDIR([config.h.in])
