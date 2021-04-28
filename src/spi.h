@@ -1,13 +1,18 @@
 #ifndef SPI_INCLUDED
 #define SPI_INCLUDED
 
+#include "../config.h"
 #include <string.h>
 #include <stdio.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
 #include <stdint.h>
+
+#ifdef HAVE_LINUX_SPI_SPIDEV_H
 #include <linux/spi/spidev.h>
+#endif
+
 #include "error.h"
 
 // See pinout.xyz showing physical pins
@@ -18,13 +23,17 @@
 #define SPIPATH "/dev/spidev"
 
 struct SPI {
-  char* device;
   unsigned int speed_hz;
   uint8_t mode;
   uint8_t bits_per_word;
   uint8_t chip_select;
   int fd;
+
+#ifdef HAVE_LINUX_SPI_SPIDEV_H
   struct spi_ioc_transfer transfer;
+#else
+  void *transfer;
+#endif
 };
 
 int

@@ -1,5 +1,6 @@
 #ifndef OPTIONS_H
 #define OPTIONS_H
+#include "../config.h"
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -22,6 +23,10 @@
 #define GPIO_INTERRUPT_AG 13
 #endif
 
+#ifndef GPIO_INTERRUPT_M
+#define GPIO_INTERRUPT_M 6
+#endif
+
 struct options
 {
   int help;
@@ -29,11 +34,12 @@ struct options
   int test;
   long spi_clk_hz;
   int configure;
-  int odr;
+  int odr_ag;
+  int odr_m;
   int daemon;
   int gpio_interrupt_ag;
-  int spi_dev;
-  int interrupt_thresh_g;
+  int gpio_interrupt_m;
+  int spi_dev; // a file descriptor for /dev/spidev0 for example
   FILE* data_file;
   int fd_socket_udp;
   struct sockaddr_in socket_udp_dest;

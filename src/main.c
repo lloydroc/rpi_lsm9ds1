@@ -25,7 +25,7 @@ void signal_handler(int sig)
 int
 main(int argc, char *argv[])
 {
-  int fd, ret;
+  int ret;
 
   if (signal(SIGINT, signal_handler) == SIG_ERR)
     err_output("installing SIGNT signal handler");
@@ -39,38 +39,63 @@ main(int argc, char *argv[])
     usage();
     return ret;
   }
-  else if(opts.help)
+
+#ifndef HAVE_LINUX_SPI_SPIDEV_H
+  fprintf(stderr, "Linux headers for SPI not found ... exiting\n");
+  return EXIT_FAILURE;
+#endif
+
+  if(lsm9ds1_configure_interrupt(opts.gpio_interrupt_ag, &dev.fd_int1_ag_pin))
   {
-    usage();
-    return EXIT_SUCCESS;
+    fprintf(stderr, "unable to configure AG interrupt %d\n", opts.gpio_interrupt_ag);
+    return EXIT_FAILURE;
   }
 
-  if(lsm9ds1_configure_ag_interrupt(opts.gpio_interrupt_ag, &fd))
+  if(lsm9ds1_configure_interrupt(opts.gpio_interrupt_m, &dev.fd_int1_m_pin))
   {
-    fprintf(stderr, "unable to configure interrupt %d\n", opts.gpio_interrupt_ag);
+    fprintf(stderr, "unable to configure M interrupt %d\n", opts.gpio_interrupt_m);
     return EXIT_FAILURE;
   }
 
   if(opts.spi_dev == 0)
+  {
     dev.spidev_ag = "/dev/spidev0.0";
+    dev.spidev_m = "/dev/spidev0.1";
+  }
   else if(opts.spi_dev == 1)
-    dev.spidev_ag = "/dev/spidev0.1";
+  {
+    dev.spidev_ag = "/dev/spidev1.1";
+    dev.spidev_m = "/dev/spidev1.1";
+  }
 
   dev.spi_clk_hz = opts.spi_clk_hz;
-  dev.odr = opts.odr;
-  dev.fd_int1_ag_pin = fd;
+  dev.odr_ag = opts.odr_ag;
+  dev.odr_m = opts.odr_m;
 
   lsm9ds1_init(&dev);
 
   if(opts.reset)
   {
-    lsm9ds1_reset(&dev);
-    ret = EXIT_SUCCESS;
+    ret = lsm9ds1_reset(&dev);
+    if(ret)
+    {
+      fprintf(stderr, "failed to reset\n");
+    }
     goto cleanup;
   }
   else if(opts.configure)
   {
-    lsm9ds1_configure(&dev);
+    ret = lsm9ds1_configure(&dev);
+    if(ret == 1)
+    {
+      fprintf(stderr, "unable to configure AG sensor\n");
+      goto cleanup;
+    }
+    else if(ret == 2)
+    {
+      fprintf(stderr, "unable to configure M sensor\n");
+      goto cleanup;
+    }
     ret = lsm9ds1_test(&dev);
     goto cleanup;
   }
@@ -105,4 +130,3 @@ cleanup:
 
   return ret;
 }
-

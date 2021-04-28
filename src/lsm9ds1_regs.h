@@ -1,15 +1,19 @@
 #ifndef LSM9DS1_REGS_H
 #define LSM9DS1_REGS_H
 
-enum lsm9ds1_odr
+// TODO we need to prefix many fields by AG or M
+
+/* Accelerometer and Gyrometer Definitions */
+
+enum lsm9ds1_odr_ag
 {
-  ODR_POWER_DOWN,
-  ODR_14p9_HZ,
-  ODR_59p5_HZ,
-  ODR_119_HZ,
-  ODR_238_HZ,
-  ODR_476_HZ,
-  ODR_952_HZ
+  ODR_AG_POWER_DOWN,
+  ODR_AG_14p9_HZ,
+  ODR_AG_59p5_HZ,
+  ODR_AG_119_HZ,
+  ODR_AG_238_HZ,
+  ODR_AG_476_HZ,
+  ODR_AG_952_HZ
 };
 
 #define ACT_THS 0x04
@@ -154,5 +158,51 @@ enum lsm9ds1_odr
 #define INT_GEN_THS_Z_G 0x33
 #define INT_GEN_DUR_G 0x37
 #define WAIT_G          0b10000000
+
+/* Magnetometer Definitions */
+
+enum lsm9ds1_odr_m
+{
+  ODR_M_0p625_HZ,
+  ODR_M_1p25_HZ,
+  ODR_M_2p5_HZ,
+  ODR_M_5_HZ,
+  ODR_M_10_HZ,
+  ODR_M_20_HZ,
+  ODR_M_40_HZ,
+  ODR_M_80_HZ
+};
+
+#define OFFSET_X_REG_L_M 0x05
+#define OFFSET_X_REG_H_M 0x06
+#define OFFSET_Y_REG_L_M 0x07
+#define OFFSET_Y_REG_H_M 0x08
+#define OFFSET_Z_REG_L_M 0x09
+#define OFFSET_Z_REG_H_M 0x0A
+
+#define WHO_AM_I_M 0x0F
+#define WHO_AM_I_M_VAL 0b00111101
+
+#define CTRL_REG1_M 0x20
+#define CTRL_REG2_M 0x21
+#define CTRL_REG3_M 0x22
+#define CTRL_REG4_M 0x23
+#define CTRL_REG5_M 0x24
+#define STATUS_REG_M 0x27
+#define OUT_X_L_M 0x28
+#define OUT_X_H_M 0x29
+#define OUT_Y_L_M 0x2A
+#define OUT_Y_H_M 0x2B
+#define OUT_Z_L_M 0x2C
+#define OUT_Z_H_M 0x2D
+
+#define INT_CFG_M 0x30
+#define IEL 0b00000010
+#define IEN 0b00000001
+
+#define INT_SRC_M 0x31
+#define INT_THS_L_M 0x32
+#define INT_THS_H_M 0x33
+
 
 #endif

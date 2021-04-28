@@ -4,9 +4,9 @@ A command line tool to interact with the ST LSM9DS1 on the Raspberry Pi.
 
 # Features
 
-* Output Accelerometer and Gyroscope sensor data to the terminal.
-* Write Accelerometer and Gyroscope sensor data to a file for post processing.
-* Send Accelerometer and Gyroscope Data to a UDP Socket for near-real time processing.
+* Output Accelerometer, Gyroscope and Magnetometer sensor data to the terminal.
+* Write Accelerometer, Gyroscope and Magnetometer sensor data to a file for post processing.
+* Send Accelerometer, Gyroscope and Magnetomter Data to a UDP Socket for near-real time processing.
 * Run as a daemon process in the background.
 * Low CPU and Power consumption due to Interrupt Driven Asynchronous I/O.
 
@@ -18,8 +18,9 @@ See the downloading and installation below. Once installed here are the options:
 $ lsm9ds1 -h
 Usage: lsm9ds1 [OPTIONS]
 
+Version: 2.0
 A command line tool to read data from the ST LSM9DS1.
-After wiring up the LSM9DS1 you MUST run a configuration on it first.
+After wiring up the lsm9ds1 you MUST run a configuration on it first.
 
 OPTIONS:
 -h --help                     Print help
@@ -27,9 +28,11 @@ OPTIONS:
 -t --test                     Perform a test
 -z --spi-clk-hz SPEED         Speed of SPI Clock. Default 8000000 Hz
 -s --spi-device SPI           Device. Default 0.
--g --rpi-gpio-interrupt GPIO  Interrupt Pin. Default 13.
+   --ag-gpio-interrupt GPIO   Interrupt Pin for G and XL. Default 13.
+   --m-gpio-interrupt GPIO    Interrupt Pin for M. Default 6.
 -c --configure                Write Configuration
--r --odr ODR                  G and XL Sample Frequency in Hz: 14.9, 59.5, 119, 238, 476, 952. Default 14.9 Hz.
+-r --odr-ag ODR               G and XL Sample Frequency in Hz: 14.9, 59.5, 119, 238, 476, 952. Default 14.9 Hz.
+-m --odr-m ODR                M Sample Frequency in Hz: 0.625, 1.25, 2.5, 5, 10, 20, 40, 80. Default 10 Hz.
 -d --daemon                   Run as a Daemon
 -f --file FILENAME            Output data to a File
 -u --socket-udp HOST:PORT     Output data to a UDP Socket
@@ -40,7 +43,7 @@ We separate the configuration of the LSM9DS1 and sensor sampling. This means tha
 
 ```
 $ lsm9ds1 -x # software reset LSM9DS1
-$ lsm9ds1 -r 59.5 -c # configure the LSM9DS1 at 59.5 HZ Sampling Rate
+$ lsm9ds1 -r 59.5 -m 40 -c # configure LSM9DS1 with 59.5 Hz for XL,G and 40Hz for M
 $ lsm9ds1 # see the readings, type CTRL-C to stop
 ```
 
@@ -49,9 +52,8 @@ $ lsm9ds1 # see the readings, type CTRL-C to stop
 Download the distribution tarball. The source code in this repo should be used if you want to develop code on it. See the Contributing section below for changing the source code.
 
 ```
-wget https://lloydrochester.com/code/rpi_lsm9ds1-1.0.tar.gz
-tar zxf rpi_lsm9ds1-1.0.tar.gz
-cd rpi_lsm9ds1
+wget https://lloydrochester.com/code/rpi_lsm9ds1-2.0.tar.gz
+tar zxf rpi_lsm9ds1-2.0.tar.gz
 ```
 
 # Installing
@@ -69,6 +71,7 @@ Note, this command will not take effect until the user logs in and out again. Yo
 After downloading the tarball and extracting - assuming you're in the `rpi_lsm9ds1` folder:
 
 ```
+$ cd rpi_lsm9ds1-2.0
 $ ./configure
 $ make
 $ sudo make install
@@ -95,16 +98,18 @@ sudo make uninstall
 | SDA         | SPI Serial Data Input                   | 19      | SPI0 Master Out / Slave In | 10          |
 | CS_A/G      | Chip Select for A/G                     | 24      | SPI0 Chip Enable           | 8           |
 | SDO_A/G     | SPI Serial Data Output for A/G          | 21      | SPI0 Master In / Slave Out | 9           |
+| SDO_M       | SPI Serial Data Output for M            | 21      | SPI0 Master In / Slave Out | 9           |
 | INT1_A/G    | Accelerometer and Gyrometer Interrupt 1 | 33      | GPIO Pin 13                | 13          |
+| INT_M       | Magnetometer Interrupt                  | 31      | GPIO Pin 6                 | 6           |
 
-The wiring for the interrupt pin can be changed with the `-g` or `--rpi-gpio-interrupt` option by specifying the header pin number. The SPI device can be changed using the `-s` or `--spi-device` and specifying the SPI device.
+The wiring for the interrupt pins can be changed with the `--ag-gpio-interrupt` and `--m-gpio-interrupt` options by specifying the header pin number. The SPI device can be changed using the `-s` or `--spi-device` and specifying the SPI device. If you do this ensure you have both chip selects enabled.
 
 # Data Files
 
 When using the `-f` or `--file` flags the output format will be CSV with rows looking like:
 
 ```
-1591048862.184511,133,-14,85,2194,15931,-1141
+1619557677.618180,128,-278,-124,4270,-73,16222,-11953,-10708,-3067
 ```
 
 Here is a description of each column:
@@ -115,6 +120,9 @@ Here is a description of each column:
 * Accelerometer X - Raw 16 bit 2's compliment value
 * Accelerometer Y - Raw 16 bit 2's compliment value
 * Accelerometer Z - Raw 16 bit 2's compliment value
+* Magnetometer X - Raw 16 bit 2's compliment value
+* Magnetometer Y - Raw 16 bit 2's compliment value
+* Magnetometer Z - Raw 16 bit 2's compliment value
 
 If we use the `-b` or `--binary` option along with the file options we will have the following binary content in a file. This same content can be sent out a UDP socket.
 
@@ -126,6 +134,9 @@ If we use the `-b` or `--binary` option along with the file options we will have
 * 2-bytes with 2's compliment Accelerometer X
 * 2-bytes with 2's compliment Accelerometer Y
 * 2-bytes with 2's compliment Accelerometer Z
+* 2-bytes with 2's compliment Magnetometer X
+* 2-bytes with 2's compliment Magnetometer Y
+* 2-bytes with 2's compliment Magnetometer Z
 
 # UDP Sockets
 

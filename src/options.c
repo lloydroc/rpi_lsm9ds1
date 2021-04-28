@@ -4,6 +4,7 @@ void
 usage(void)
 {
   printf("Usage: lsm9ds1 [OPTIONS]\n\n");
+  printf("Version: %s\n", VERSION);
   printf("A command line tool to read data from the ST LSM9DS1.\n");
   printf("After wiring up the lsm9ds1 you MUST run a configuration on it first.\n\n");
   printf("OPTIONS:\n\
@@ -12,9 +13,11 @@ usage(void)
 -t --test                     Perform a test\n\
 -z --spi-clk-hz SPEED         Speed of SPI Clock. Default 8000000 Hz\n\
 -s --spi-device SPI           Device. Default 0.\n\
--g --rpi-gpio-interrupt GPIO  Interrupt Pin. Default 13.\n\
+   --ag-gpio-interrupt GPIO   Interrupt Pin for G and XL. Default 13.\n\
+   --m-gpio-interrupt GPIO    Interrupt Pin for M. Default 6.\n\
 -c --configure                Write Configuration\n\
--r --odr ODR                  G and XL Sample Frequency in Hz: 14.9, 59.5, 119, 238, 476, 952. Default 14.9 Hz.\n\
+-r --odr-ag ODR               G and XL Sample Frequency in Hz: 14.9, 59.5, 119, 238, 476, 952. Default 14.9 Hz.\n\
+-m --odr-m ODR                M Sample Frequency in Hz: 0.625, 1.25, 2.5, 5, 10, 20, 40, 80. Default 10 Hz.\n\
 -d --daemon                   Run as a Daemon\n\
 -f --file FILENAME            Output data to a File\n\
 -u --socket-udp HOST:PORT     Output data to a UDP Socket\n\
@@ -32,32 +35,56 @@ options_init(struct options *opts)
   opts->spi_dev = 0;
   opts->configure = 0;
   opts->gpio_interrupt_ag = GPIO_INTERRUPT_AG;
-  opts->interrupt_thresh_g = 0;
-  opts->odr = ODR_14p9_HZ;
+  opts->gpio_interrupt_m = GPIO_INTERRUPT_M;
+  opts->odr_ag = ODR_AG_14p9_HZ;
+  opts->odr_m = ODR_M_10_HZ;
   opts->daemon = 0;
   opts->data_file = stdout;
   opts->fd_socket_udp = -1;
 }
 
 static int
-options_parse_odr(char *optval, int *odr)
+options_parse_odr_ag(char *optval, int *odr_ag)
 {
-  *odr = -1;
+  *odr_ag = -1;
   if(strcmp("0", optval) == 0)
-    *odr = ODR_POWER_DOWN;
+    *odr_ag = ODR_AG_POWER_DOWN;
   else if(strcmp("14.9", optval) == 0)
-    *odr = ODR_14p9_HZ;
+    *odr_ag = ODR_AG_14p9_HZ;
   else if(strcmp("59.5", optval) == 0)
-    *odr = ODR_59p5_HZ;
+    *odr_ag = ODR_AG_59p5_HZ;
   else if(strcmp("119", optval) == 0)
-    *odr = ODR_119_HZ;
+    *odr_ag = ODR_AG_119_HZ;
   else if(strcmp("238", optval) == 0)
-    *odr = ODR_238_HZ;
+    *odr_ag = ODR_AG_238_HZ;
   else if(strcmp("476", optval) == 0)
-    *odr = ODR_476_HZ;
+    *odr_ag = ODR_AG_476_HZ;
   else if(strcmp("952", optval) == 0)
-    *odr = ODR_952_HZ;
-  return *odr == -1;
+    *odr_ag = ODR_AG_952_HZ;
+  return *odr_ag == -1;
+}
+
+static int
+options_parse_odr_m(char *optval, int *odr_m)
+{
+  *odr_m = -1;
+  if(strcmp("0.625", optval) == 0)
+    *odr_m = ODR_M_0p625_HZ;
+  else if(strcmp("1.25", optval) == 0)
+    *odr_m = ODR_M_1p25_HZ;
+  else if(strcmp("2.5", optval) == 0)
+    *odr_m = ODR_M_2p5_HZ;
+  else if(strcmp("5", optval) == 0)
+    *odr_m = ODR_M_5_HZ;
+  else if(strcmp("10", optval) == 0)
+    *odr_m = ODR_M_10_HZ;
+  else if(strcmp("20", optval) == 0)
+    *odr_m = ODR_M_20_HZ;
+  else if(strcmp("40", optval) == 0)
+    *odr_m = ODR_M_40_HZ;
+  else if(strcmp("80", optval) == 0)
+    *odr_m = ODR_M_80_HZ;
+  return *odr_m == -1;
 }
 
 static FILE*
@@ -144,24 +171,25 @@ options_parse(struct options *opts, int argc, char *argv[])
   static struct option long_options[] =
   {
     {"help",                     no_argument, 0,   0},
-    {"reset",                    no_argument, 0,   0},
-    {"spi-clk-hz",         required_argument, 0, 'h'},
+    {"reset",                    no_argument, 0, 'x'},
+    {"spi-clk-hz",         required_argument, 0, 'z'},
+    {"test",               required_argument, 0, 't'},
     {"spi-device",         required_argument, 0, 's'},
-    {"rpi-gpio-interrupt", required_argument, 0, 'g'},
-    {"configure",                no_argument, 0,   0},
-    {"odr",                required_argument, 0, 'r'},
+    {"ag-gpio-interrupt", required_argument, 0,   0},
+    {"configure",                no_argument, 0, 'c'},
+    {"odr-ag",             required_argument, 0, 'r'},
+    {"odr-m",             required_argument, 0,  'm'},
     {"deamon",                   no_argument, 0, 'd'},
     {"file",               required_argument, 0, 'f'},
     {"socket-udp",         required_argument, 0, 'u'},
-    {"binary",                   no_argument, 0, 'u'},
-    {"interrupt-thresh-g",       no_argument, 0,   0},
+    {"binary",                   no_argument, 0, 'b'},
     {0,                                    0, 0,   0}
   };
 
   while(1)
   {
     option_index = 0;
-    c = getopt_long_only(argc, argv, "hxtz:cf:u:bdr:s:g:", long_options, &option_index);
+    c = getopt_long_only(argc, argv, "hxtz:cf:u:bdr:m:s:", long_options, &option_index);
 
     if(c == -1)
       break;
@@ -186,14 +214,21 @@ options_parse(struct options *opts, int argc, char *argv[])
         if(opts->spi_dev > 1)
           ret |= 1;
       }
-      else if(strcmp("rpi-gpio-interrupt", long_options[option_index].name) == 0)
+      else if(strcmp("ag-gpio-interrupt", long_options[option_index].name) == 0)
         opts->gpio_interrupt_ag = atoi(optarg);
+      else if(strcmp("m-gpio-interrupt", long_options[option_index].name) == 0)
+        opts->gpio_interrupt_m = atoi(optarg);
       else if(strcmp("configure", long_options[option_index].name) == 0)
         opts->configure = 1;
-      else if(strcmp("odr", long_options[option_index].name) == 0)
+      else if(strcmp("odr_ag", long_options[option_index].name) == 0)
       {
         opts->configure = 1;
-        ret |= options_parse_odr(optarg, &opts->odr);
+        ret |= options_parse_odr_ag(optarg, &opts->odr_ag);
+      }
+      else if(strcmp("odr_m", long_options[option_index].name) == 0)
+      {
+        opts->configure = 1;
+        ret |= options_parse_odr_m(optarg, &opts->odr_m);
       }
       else if(strcmp("file", long_options[option_index].name) == 0)
       {
@@ -229,7 +264,11 @@ options_parse(struct options *opts, int argc, char *argv[])
         opts->configure = 1;
         break;
       case 'r':
-        ret = options_parse_odr(optarg, &opts->odr);
+        ret = options_parse_odr_ag(optarg, &opts->odr_ag);
+        opts->configure = 1;
+        break;
+      case 'm':
+        ret = options_parse_odr_m(optarg, &opts->odr_m);
         opts->configure = 1;
         break;
       case 'f':
@@ -244,9 +283,6 @@ options_parse(struct options *opts, int argc, char *argv[])
         break;
       case 'd':
         opts->daemon = 1;
-        break;
-      case 'g':
-        opts->gpio_interrupt_ag = atoi(optarg);
         break;
     }
   }
