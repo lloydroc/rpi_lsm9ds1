@@ -511,17 +511,17 @@ lsm9ds1_ag_write_socket_udp(struct LSM9DS1 *dev, struct options *opts)
   socklen_t servsock_len;
   servsock_len = sizeof(opts->socket_udp_dest);
 
-  datagram.secs = htonl(dev->tv.tv_sec);
-  datagram.usecs = htonl(dev->tv.tv_usec);
-  datagram.g_x = htons(dev->g.x);
-  datagram.g_y = htons(dev->g.y);
-  datagram.g_z = htons(dev->g.z);
-  datagram.xl_x = htons(dev->xl.x);
-  datagram.xl_y = htons(dev->xl.y);
-  datagram.xl_z = htons(dev->xl.z);
-  datagram.m_x = htons(dev->m.x);
-  datagram.m_y = htons(dev->m.y);
-  datagram.m_z = htons(dev->m.z);
+  datagram.secs = dev->tv.tv_sec;
+  datagram.usecs = dev->tv.tv_usec;
+  datagram.g_x = dev->g.x;
+  datagram.g_y = dev->g.y;
+  datagram.g_z = dev->g.z;
+  datagram.xl_x = dev->xl.x;
+  datagram.xl_y = dev->xl.y;
+  datagram.xl_z = dev->xl.z;
+  datagram.m_x = dev->m.x;
+  datagram.m_y = dev->m.y;
+  datagram.m_z = dev->m.z;
 
   buffrx = sendto(opts->fd_socket_udp, &datagram, sizeof(datagram), 0, (struct sockaddr *)&opts->socket_udp_dest, servsock_len);
 

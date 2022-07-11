@@ -63,7 +63,9 @@ We have the typical Autotools installation flow. We will compile the code from s
 Firstly, if we're running as non-root the user running the program will need access to SPI and GPIO. Use `raspi-config` to enable SPI. Then add the user to the following groups:
 
 ```
-$ usermod -a -G gpio spi pi # assumes the pi user
+$ usermod -a -G gpio -G spi pi # assumes the pi user
+$ sudo chown root:spi /dev/spidev*
+$ sudo chmod g+rw /dev/spidev*
 ```
 
 Note, this command will not take effect until the user logs in and out again. You can verify using the `groups` command.
