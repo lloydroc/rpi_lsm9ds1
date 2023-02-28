@@ -1,0 +1,14 @@
+[Unit]
+Description=ebyte e32 systemd service
+
+[Service]
+Type=forking
+PIDFile=/run/lsm9ds1.pid
+ExecStartPre=stat /dev/spidev0.0 /dev/spidev0.1
+ExecStartPre=lsm9ds1 --test
+ExecStart=lsm9ds1 --daemon --sock-udp 127.0.0.1:5060 --odr-m 0.625
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

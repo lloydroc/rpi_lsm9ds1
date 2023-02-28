@@ -104,6 +104,11 @@ main(int argc, char *argv[])
     if(opts.data_file == stdout)
       opts.data_file = NULL;
     become_daemon();
+    if(write_pidfile("/run/e32.pid"))
+    {
+      errno_output("unable to write pid file\n");
+    }
+    info_output("daemon started pid=%ld", getpid());
   }
 
   ret = lsm9ds1_test(&dev);

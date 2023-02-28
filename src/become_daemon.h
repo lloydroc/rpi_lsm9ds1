@@ -2,6 +2,10 @@
 #define BECOME_DAEMON_H
 
 // returns 0 on success -1 on error
-int become_daemon();
+int 
+become_daemon();
+
+int
+write_pidfile(char *file);
 
 #endif
