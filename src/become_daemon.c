@@ -43,3 +43,19 @@ become_daemon()
 
   return 0;
 }
+
+int
+write_pidfile(char *file)
+{
+  pid_t pid;
+  FILE *fp;
+  fp = fopen(file, "w");
+  if(fp == NULL)
+  {
+    return 1;
+  }
+  pid = getpid();
+  fprintf(fp, "%d\n", pid);
+  fclose(fp);
+  return 0;
+}
