@@ -11,9 +11,17 @@ int
 gpio_permissions_valid()
 {
     uid_t uid = geteuid();
+
+    if(uid == 0)
+    {
+      return 0;
+    }
+
     gid_t groups[1024];
     struct stat statbuf;
     int ret, ngroups;
+
+    err_output("geteuid %d\n", uid);
 
     ngroups = getgroups(1024, groups);
     if(ngroups == -1)

@@ -1,5 +1,7 @@
 #include "error.h"
 
+#define BUF_SIZE 1024
+
 static char *ename[] = {
     /*   0 */ "",
     /*   1 */ "EPERM", "ENOENT", "ESRCH", "EINTR", "EIO", "ENXIO",
@@ -29,79 +31,88 @@ static char *ename[] = {
     /* 106 */ "EQFULL"
 };
 
-
-/*static void
-output_error(bool useErr, int err, bool flushStdout, const char *format, va_list ap);
-
 static void
-terminate(bool useExit3);
-*/
-
-static void
-output_error(bool useErr, int err, bool flushStdout, const char *format, va_list ap)
+output(int priority, const char *format, va_list ap)
 {
-#define BUF_SIZE 1024
-    char buf[BUF_SIZE], userMsg[BUF_SIZE], errText[BUF_SIZE];
+  char buf[BUF_SIZE];
 
-    vsnprintf(userMsg, BUF_SIZE, format, ap);
+  vsnprintf(buf, BUF_SIZE, format, ap);
 
-    if (useErr)
-        snprintf(errText, BUF_SIZE, " [%s %s]",
-                (err > 0 && err <= MAX_ENAME) ?
-                ename[err] : "?UNKNOWN?", strerror(err));
-    else
-        snprintf(errText, BUF_SIZE, ":");
-
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wformat-truncation"
-    snprintf(buf, BUF_SIZE, "ERROR%s %s\n", errText, userMsg);
-#pragma GCC diagnostic pop
-
-    if (flushStdout)
-        fflush(stdout);       /* Flush any pending stdout */
+  if(use_syslog)
+    syslog(priority, "%s", buf);
+  else if(priority > LOG_WARNING)
+    fputs(buf, stdout);
+  else
     fputs(buf, stderr);
-    fflush(stderr);           /* In case stderr is not line-buffered */
 }
 
-static void
-terminate(bool useExit3)
+void
+info_output(const char *format, ...)
 {
-    char *s;
+  va_list argList;
+  va_start(argList, format);
+  output(LOG_INFO, format, argList);
+  va_end(argList);
+}
 
-    /* Dump core if EF_DUMPCORE environment variable is defined and
-       is a nonempty string; otherwise call exit(3) or _exit(2),
-       depending on the value of 'useExit3'. */
+void
+debug_output(const char *format, ...)
+{
+  va_list argList;
+  va_start(argList, format);
+  output(LOG_DEBUG, format, argList);
+  va_end(argList);
+}
 
-    s = getenv("EF_DUMPCORE");
-
-    if (s != NULL && *s != '\0')
-        abort();
-    else if (useExit3)
-        exit(EXIT_FAILURE);
-    else
-        _exit(EXIT_FAILURE);
+void
+warn_output(const char *format, ...)
+{
+  va_list argList;
+  va_start(argList, format);
+  output(LOG_WARNING, format, argList);
+  va_end(argList);
 }
 
 void
 err_output(const char *format, ...)
 {
-
   va_list argList;
-
   va_start(argList, format);
-  output_error(true, errno, true, format, argList);
+  output(LOG_ERR, format, argList);
   va_end(argList);
 }
 
-void
-err_exit(const char *format, ...)
+static void
+output_errno(int err, const char *format, va_list ap)
 {
+  char buf[3*BUF_SIZE], userMsg[BUF_SIZE], errText[BUF_SIZE];
 
+  vsnprintf(userMsg, BUF_SIZE, format, ap);
+
+  snprintf(errText, BUF_SIZE, " [%d %s %s]",
+          err,
+          (err > 0 && err <= MAX_ENAME) ?
+          ename[err] : "?UNKNOWN?", strerror(err));
+
+  snprintf(buf, 3*BUF_SIZE-1, "ERROR%s %s\n", errText, userMsg);
+
+  if(use_syslog)
+  {
+    syslog(LOG_ERR, "%s", buf);
+  }
+  else
+  {
+    fflush(stdout);     /* Flush any pending stdout */
+    fputs(buf, stderr);
+    fflush(stderr);     /* In case stderr is not line-buffered */
+  }
+}
+
+void
+errno_output(const char *format, ...)
+{
   va_list argList;
-
   va_start(argList, format);
-  err_output(format, argList);
+  output_errno(errno, format, argList);
   va_end(argList);
-
-  terminate(false);
 }

@@ -1,8 +1,3 @@
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <stdio.h>
 #include "become_daemon.h"
 
 int // returns 0 on success -1 on error

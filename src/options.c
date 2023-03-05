@@ -1,5 +1,8 @@
 #include "options.h"
 
+// tells error.c when we print to use stdout, stderr, or syslog
+int use_syslog = 0;
+
 void
 usage(void)
 {
@@ -22,6 +25,7 @@ usage(void)
 -f --file FILENAME            Output data to a File\n\
 -u --socket-udp HOST:PORT     Output data to a UDP Socket\n\
 -b --binary                   Used with the -f and -u options for binary output\n\
+   --silent                   Do not print sensor readings to standard output but print other warnings and errors\n\
 ");
 }
 
@@ -39,8 +43,9 @@ options_init(struct options *opts)
   opts->odr_ag = ODR_AG_14p9_HZ;
   opts->odr_m = ODR_M_10_HZ;
   opts->daemon = 0;
-  opts->data_file = stdout;
+  opts->data_file = NULL;
   opts->fd_socket_udp = -1;
+  opts->silent = 0;
 }
 
 static int
@@ -170,19 +175,20 @@ options_parse(struct options *opts, int argc, char *argv[])
   int ret = 0;
   static struct option long_options[] =
   {
-    {"help",                     no_argument, 0,   0},
+    {"help",                     no_argument, 0, 'h'},
     {"reset",                    no_argument, 0, 'x'},
     {"spi-clk-hz",         required_argument, 0, 'z'},
-    {"test",               required_argument, 0, 't'},
+    {"test",                     no_argument, 0, 't'},
     {"spi-device",         required_argument, 0, 's'},
     {"ag-gpio-interrupt", required_argument, 0,   0},
     {"configure",                no_argument, 0, 'c'},
     {"odr-ag",             required_argument, 0, 'r'},
     {"odr-m",             required_argument, 0,  'm'},
-    {"deamon",                   no_argument, 0, 'd'},
+    {"daemon",                   no_argument, 0, 'd'},
     {"file",               required_argument, 0, 'f'},
     {"socket-udp",         required_argument, 0, 'u'},
     {"binary",                   no_argument, 0, 'b'},
+    {"silent",                   no_argument, 0,   0},
     {0,                                    0, 0,   0}
   };
 
@@ -241,6 +247,11 @@ options_parse(struct options *opts, int argc, char *argv[])
         opts->binary = 1;
       else if(strcmp("daemon", long_options[option_index].name) == 0)
         opts->daemon = 1;
+      else if(strcmp("silent", long_options[option_index].name) == 0)
+        opts->silent = 1;
+      else
+        opts->help = 1;
+      break;
 
       case 'h':
         opts->help = 1;
@@ -285,6 +296,13 @@ options_parse(struct options *opts, int argc, char *argv[])
         opts->daemon = 1;
         break;
     }
+  }
+
+  // this option sets whether we log to syslog or not
+  // and should checked first
+  if(opts->daemon)
+  {
+    use_syslog = 1;
   }
 
   if (optind < argc)

@@ -44,6 +44,7 @@ struct options
   int fd_socket_udp;
   struct sockaddr_in socket_udp_dest;
   int binary;
+  int silent;
 };
 
 void

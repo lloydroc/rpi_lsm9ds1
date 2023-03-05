@@ -74,7 +74,12 @@ main(int argc, char *argv[])
 
   lsm9ds1_init(&dev);
 
-  if(opts.reset)
+  if(opts.help)
+  {
+    usage();
+    return 0;
+  }
+  else if(opts.reset)
   {
     ret = lsm9ds1_reset(&dev);
     if(ret)
@@ -104,7 +109,8 @@ main(int argc, char *argv[])
     if(opts.data_file == stdout)
       opts.data_file = NULL;
     become_daemon();
-    if(write_pidfile("/run/e32.pid"))
+    openlog("lsm9ds1", 0, LOG_DAEMON);
+    if(write_pidfile("/run/lsm9ds1.pid"))
     {
       errno_output("unable to write pid file\n");
     }

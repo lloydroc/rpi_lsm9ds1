@@ -604,11 +604,11 @@ lsm9ds1_ag_poll(struct LSM9DS1 *dev, struct options *opts)
 
     gettimeofday(&dev->tv, NULL);
 
-    if(fd_data_file != -1 && tty)
+    if(tty && !opts->silent)
     {
       lsm9ds1_ag_write_terminal(dev);
     }
-    else if(fd_data_file != -1)
+    if(fd_data_file != -1)
     {
       lsm9ds1_ag_write_file(dev, opts->data_file, opts->binary);
     }
